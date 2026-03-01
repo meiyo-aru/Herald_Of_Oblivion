@@ -1,0 +1,62 @@
+# =========================
+# Unreal Engine 5
+# =========================
+
+# Build results
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Compiled source files
+*.dll
+*.exe
+*.app
+*.so
+*.dylib
+*.lib
+*.a
+*.obj
+*.o
+*.pdb
+
+# Auto-generated project files
+*.VC.db
+*.VC.opendb
+*.suo
+*.user
+*.userprefs
+*.opensdf
+*.sdf
+*.log
+
+# IDE
+.vs/
+.idea/
+.vscode/
+
+# Rider
+*.DotSettings.user
+
+# Mac
+.DS_Store
+
+# Crash reports
+crashinfo--*
+
+# Unreal specific temporary files
+*.tmp
+*.temp
+
+# Packaging
+*.ipa
+*.apk
+
+# Test/Local data
+Saved/Autosaves/
+Saved/Backup/
+Saved/Logs/
+
+# Ignore local config overrides (optional, se trabalhar em equipe)
+Config/DefaultEditorPerProjectUserSettings.ini
