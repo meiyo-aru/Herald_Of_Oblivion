@@ -22,7 +22,7 @@ UObject (The "Instance"): A lightweight persistent object for each creature, tra
 
 ASkillActor (The "Execution"): A pooled/spawned actor responsible for world representation and collision, completely decoupled from character stats.
 
-Why this matters: This architecture allows designers to create new skills by simply creating a new Data Asset, without touching C++ code.
+Why this matters: This architecture allows designers to create new skills by simply creating a new Data Asset, without touching C++ code. With a few tweaks, this C++ logic becomes possible for the player to create unique abilities in real time. It's very similar to the skill system in Path of Exile.
 
 2. High-Performance Movement & Camera
 Custom isometric camera implementation and character movement optimized for responsiveness.
