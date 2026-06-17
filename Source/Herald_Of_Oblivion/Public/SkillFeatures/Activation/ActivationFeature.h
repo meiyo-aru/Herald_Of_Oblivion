@@ -12,6 +12,8 @@
  */
 
 class UNiagaraComponent;
+class UNiagaraSystem;
+class USoundCue;
 
 UCLASS(Abstract)
 class HERALD_OF_OBLIVION_API UActivationFeature : public USkillFeature
@@ -24,13 +26,14 @@ public:
 	// Niagara Components spawnados, depois serao destruidos ao terminar a logica da feature
 	UPROPERTY()
 	TArray<UNiagaraComponent*> SpawnedNiagaraComponents = TArray<UNiagaraComponent*>();
-
+	
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 
 	// Limpa os handles utilizados
 	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
 	virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
+	FHitResult GetAimTarget(FSkillContext& InContext) const;
 	FHitResult GetCursorLocation(FSkillContext& InContext) const;
 
 	// Lógica de ativação inicial e final

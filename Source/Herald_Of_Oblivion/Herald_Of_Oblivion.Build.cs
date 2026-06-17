@@ -8,7 +8,7 @@ public class Herald_Of_Oblivion : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",  "NavigationSystem", "AIModule", "PhysicsCore", "Niagara" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",  "NavigationSystem", "AIModule", "PhysicsCore", "Niagara", "UMG" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

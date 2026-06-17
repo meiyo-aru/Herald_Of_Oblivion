@@ -4,10 +4,12 @@
 #include "SkillFeatures/Activation/ActivationCastWithHoldFeature.h"
 
 #include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Core/EntityClass.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
+#include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "Kismet/KismetMathLibrary.h"
 
 void UActivationCastWithHoldFeature::Initialize(USkillInstance* Owner)
@@ -32,50 +34,54 @@ void UActivationCastWithHoldFeature::StartActivation(FSkillContext& InSkillConte
 	
 	if (!SkillDataAsset || !EntityOwner) return;
 	
-	if (SkillDataAsset->bAuraInCast)
+	if (this->bAura)
 	{
-		if (SkillDataAsset->bAuraInStaticMesh)
-		{
-			if (UNiagaraSystem* StaticMeshAuraEffect = SkillDataAsset->StaticMeshAuraEffect.LoadSynchronous())
-			{
-				if (SkillDataAsset->bLeftHand)
-					SpawnedNiagaraComponents.Add(SpawnAuraVFX(StaticMeshAuraEffect, SkillDataAsset, EntityOwner, InSkillContext, EAuraType::StaticMesh, EntityOwner->GetLeftEquippedWeapon(), FName("LeftSocketHand")));
-				if (SkillDataAsset->bRightHand)
-					SpawnedNiagaraComponents.Add(SpawnAuraVFX(StaticMeshAuraEffect, SkillDataAsset, EntityOwner, InSkillContext, EAuraType::StaticMesh, EntityOwner->GetRightEquippedWeapon(), FName("RightSocketHand")));
-			}
-		}
 		
-		if (SkillDataAsset->bAuraInSkeletalMesh)
+		if (this->bAura)
 		{
-			if (UNiagaraSystem* SkeletalMeshAuraEffect = SkillDataAsset->SkeletalMeshAuraEffect.LoadSynchronous())
+			if (UNiagaraSystem* AuraEffect = this->SkeletalMeshAuraEffect.Get())
 			{
-				SpawnedNiagaraComponents.Add(SpawnAuraVFX(SkeletalMeshAuraEffect, SkillDataAsset, EntityOwner, InSkillContext, EAuraType::SkeletalMesh, EntityOwner->GetMesh(), NAME_None));
+				UNiagaraComponent* NC = SpawnAuraVFX(AuraEffect, SkillDataAsset, EntityOwner, InSkillContext, EAuraType::SkeletalMesh, EntityOwner->GetMesh(), NAME_None);
+				NC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
+				NC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
+				NC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
+				NC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
+
+				SpawnedNiagaraComponents.Add(NC);
 			}
 		}
 	}
 	
 	UNiagaraComponent* NiagaraComp;
-	
-	if (UNiagaraSystem* CastVFX = SkillDataAsset->CastEffect.LoadSynchronous())
+
+	if (UNiagaraSystem* CastVFX = CastEffect.Get())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("cast on target %d"), SkillDataAsset->bCastOnTarget);
-		
 		this->Context = InSkillContext;
-		if (SkillDataAsset->bCastOnTarget && !InSkillContext.StartSurfaceNormal.IsZero())
+		if (bCastOnTarget && !InSkillContext.StartSurfaceNormal.IsZero())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("VFX COM ROTATOR %s"), *InSkillContext.StartSurfaceNormal.ToString());
 			NiagaraComp = SpawnVFXAtLocation(CastVFX, UKismetMathLibrary::MakeRotFromZ(InSkillContext.StartSurfaceNormal), InSkillContext.StartLocation);
 		}
 		else
 		{
+			NiagaraComp = UNiagaraFunctionLibrary::SpawnSystemAttached(
+				CastVFX,
+				EntityOwner->GetMesh(),
+				FName("RightHandSocket"),
+				FVector::ZeroVector,
+				FRotator::ZeroRotator,
+				EAttachLocation::SnapToTarget,
+				true);
+			/*
 			NiagaraComp = SpawnVFXAtLocation(CastVFX, FRotator::ZeroRotator, EntityOwner->GetMesh()->GetSocketLocation(FName("RightHandSocket")));
+		*/
 		}
-		
+
 		if (!InSkillContext.Direction.IsZero())
 			NiagaraComp->SetVectorParameter(FName("Direction"), InSkillContext.Direction);
 			
-		NiagaraComp->SetFloatParameter(FName("MinCastTime"), SkillDataAsset->MinCastTime);
-		NiagaraComp->SetFloatParameter(FName("MaxCastTime"), SkillDataAsset->MaxCastTime);
+		NiagaraComp->SetFloatParameter(FName("MinCastTime"), MinCastTime);
+		NiagaraComp->SetFloatParameter(FName("MaxCastTime"), MaxCastTime);
+		SpawnedNiagaraComponents.Add(NiagaraComp);
 	}
 	
 	if (GetWorld()->GetTimerManager().IsTimerActive(this->TimerHandle))
@@ -94,7 +100,7 @@ void UActivationCastWithHoldFeature::StartActivation(FSkillContext& InSkillConte
 
 			WeakThis->CompleteActivation(WeakSkillInstance->CurrentContext);
 		},
-		SkillDataAsset->MaxCastTime,
+            MaxCastTime,
 		false,
 		-1
 	);
@@ -114,16 +120,13 @@ void UActivationCastWithHoldFeature::CompleteActivation(FSkillContext& InSkillCo
 		return;
 	}
 	
-	if (InSkillContext.HoldDuration < SkillInstance->GetDataAsset()->MinCastTime)
+   if (InSkillContext.HoldDuration < MinCastTime)
 	{
 		CleanNiagara();
 		return;
 	}
-	
-	const USkillDataAsset* SkillDataAsset = SkillInstance->GetDataAsset();
-	AEntityClass* EntityOwner = InSkillContext.EntityOwner.Get();
-	
-	InSkillContext.ChargeRatio = FMath::Clamp(InSkillContext.HoldDuration / SkillDataAsset->MaxCastTime, 0.0f, 1.0f);
+
+	InSkillContext.ChargeRatio = FMath::Clamp(InSkillContext.HoldDuration / MaxCastTime, 0.0f, 1.0f);
 	
 	this->CleanNiagara();
 	
@@ -136,9 +139,25 @@ void UActivationCastWithHoldFeature::CleanNiagara()
 {
 	for (UNiagaraComponent* SpawnedNiagaraComponent : this->SpawnedNiagaraComponents)
 	{
-		if (SpawnedNiagaraComponent)
-			SpawnedNiagaraComponent->Deactivate();
+		if (IsValid(SpawnedNiagaraComponent))
+		{
+			SpawnedNiagaraComponent->SetFloatParameter(FName("SpawnRate"), 0.0f);
+			
+			FTimerHandle Timer;
+			
+			GetWorld()->GetTimerManager().SetTimer(
+				Timer, 
+				[SpawnedNiagaraComponent]() 
+				{
+					SpawnedNiagaraComponent->Deactivate();
+				},
+					6.0f,
+				false,
+				-1
+			);
+		}
 	}
+
 }
 
 void UActivationCastWithHoldFeature::OnNiagaraSystemFinished(class UNiagaraComponent* FinishedComponent)

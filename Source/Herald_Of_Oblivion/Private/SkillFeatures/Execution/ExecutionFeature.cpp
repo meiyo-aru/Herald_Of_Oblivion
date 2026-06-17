@@ -21,7 +21,7 @@ void UExecutionFeature::Execute(FSkillContext& InSkillContext)
 
 void UExecutionFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
 {
-	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
+	Super::OnNiagaraSystemFinished(FinishedComponent);
 }
 
 void UExecutionFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)

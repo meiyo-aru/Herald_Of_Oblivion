@@ -22,4 +22,12 @@ private:
 	virtual void SetupInputComponent() override;
 	void Menu();
 	
+	virtual void BeginPlay() override;
+	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<class UUI_Default> HUDClass;
+	
+	UPROPERTY() 
+	UUI_Default* HUDWidget;
 };

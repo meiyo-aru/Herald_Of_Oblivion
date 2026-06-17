@@ -29,11 +29,11 @@ void UExecutionThornFeature::Execute(FSkillContext& InSkillContext)
 		return;
 	}
 	
-	SkillInstance->GoOnCooldown();
 	
 	this->SpawnThorn(InSkillContext);
 	
 	SkillInstance->FinishSkill();
+	SkillInstance->GoOnCooldown();
 }
 
 void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
@@ -52,10 +52,10 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 		return;
 	}
 	
-	UNiagaraSystem* VFX = SkillDataAsset->ExecutionEffect.LoadSynchronous();
+	UNiagaraSystem* VFX = this->ExecutionEffect.Get();
 	if (!VFX)
 	{
-		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - VFX ExecutionEffect invalido para SkillDataAsset '%s'."), *GetNameSafe(SkillDataAsset));
+		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(this));
 		return;
 	}
 	
@@ -73,10 +73,11 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 
 	const FVector SurfaceNormal = InSkillContext.StartSurfaceNormal;
 	
-	const FRotator SpawnRotation = !SurfaceNormal.IsZero()
-		? UKismetMathLibrary::MakeRotFromZ(SurfaceNormal)
-		: FRotator::ZeroRotator;
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("OPAAA %s"), *SurfaceNormal.ToString()));
 
+	const FRotator SpawnRotation = !SurfaceNormal.IsZero()
+		? UKismetMathLibrary::MakeRotFromXZ(InSkillContext.Direction, SurfaceNormal)
+		: FRotator::ZeroRotator;
 	
 	FTransform SpawnTransform(SpawnRotation, SpawnLocation);
 	
@@ -90,6 +91,9 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 	
 	FVector TargetLocation = InSkillContext.EndLocation - InSkillContext.StartLocation;
 	TargetLocation.Z += this->ModifierTarget;
+	
+	FVector DirectionWithoutZ = (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal();
+	DirectionWithoutZ.Z = 0.0f;
 	
 	if (this->MinLifeSpan > 0.0f)
 	{
@@ -108,6 +112,8 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 		SkillActor->NiagaraComponent->SetVectorParameter(FName("MaxScale"), this->MaxScale);
 		SkillActor->NiagaraComponent->SetVectorParameter(FName("MinScale"), this->MinScale);
 		SkillActor->NiagaraComponent->SetVectorParameter(FName("TargetLocation"), TargetLocation);
+		SkillActor->NiagaraComponent->SetVectorParameter(FName("DirectionWithoutZ"), DirectionWithoutZ);
+
 		if (!SkillActor->NiagaraComponent->OnSystemFinished.IsAlreadyBound(this, &UExecutionThornFeature::OnNiagaraSystemFinished))
 		{
 			SkillActor->NiagaraComponent->OnSystemFinished.AddDynamic(this, &UExecutionThornFeature::OnNiagaraSystemFinished);

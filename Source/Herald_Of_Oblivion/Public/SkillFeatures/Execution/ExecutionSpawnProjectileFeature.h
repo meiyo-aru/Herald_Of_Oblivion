@@ -19,10 +19,11 @@ class HERALD_OF_OBLIVION_API UExecutionSpawnProjectileFeature : public UExecutio
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(EditAnywhere)
+
+	UPROPERTY(EditAnywhere, Category="Projectile")
 	float Speed;
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category="Projectile")
 	float LifeSpan;
 	
 	// Inicializa a Feature, registrando-a nos delegates necessários
@@ -37,4 +38,37 @@ public:
 	void SpawnProjectile(FSkillContext& InSkillContext, FName ShootingSocketName);
 	// Executa alguma lógica nas particulas do niagara
 	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Path", meta = (AssetBundles = "PathVFX"))
+	TSoftObjectPtr<UNiagaraSystem> PathEffect;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Path", meta = (AssetBundles = "PathSFX"))
+	TSoftObjectPtr<USoundCue> PathSound;
+	
+	// Define se o projétil sai pelas mãos, caso False ele sai pelo SkillContext.StartLocation
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	bool bThrowByTheHands = true;
+	
+	// Define se o lançamento do projétil será paralelo ao terreno
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	bool bParallelToTheTerrain = false;
+	
+	// Define as propriedades de colisao da skill
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	float RadiusCollision = 0.0f;
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	bool bGenerateOverlapEvents = false;
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	bool bGenerateHitEvents = false;
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	bool bNotifyRigidBodyCollision = false;
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	TEnumAsByte<ECollisionEnabled::Type> CollisionEnabled = ECollisionEnabled::NoCollision;
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	TEnumAsByte<ECollisionResponse> PawnCollision = ECR_Ignore;
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	TEnumAsByte<ECollisionResponse> WorldStaticCollision = ECR_Ignore;
+	UPROPERTY(EditAnywhere, Category="Projectile")
+	TEnumAsByte<ECollisionResponse> WorldDynamicCollision = ECR_Ignore;
+
 };

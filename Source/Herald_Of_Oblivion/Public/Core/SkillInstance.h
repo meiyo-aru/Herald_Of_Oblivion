@@ -129,4 +129,5 @@ public:
 	
 	UActivationFeature* GetActivationFeature() const {return this->ActivationFeature;};
 	UExecutionFeature* GetExecutionFeature() const {return this->ExecutionFeature;};
+	UOnHitFeature* GetOnHitFeature() const {return this->OnHitFeature;};
 };

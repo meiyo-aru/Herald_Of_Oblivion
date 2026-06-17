@@ -26,25 +26,22 @@ class HERALD_OF_OBLIVION_API UExecutionThornFeature : public UExecutionFeature
 	GENERATED_BODY()
 public:
 	// Tempo de vida Maximo de um espinho
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category="Thorn")
 	float MaxLifeSpan = 7.0f;
 	// Tempo de vida Minimo de um espinho
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category="Thorn")
 	float MinLifeSpan = 5.0f;
-	
+	// Escala minima do espinho
+	UPROPERTY(EditAnywhere, Category="Thorn")
+	FVector MinScale = FVector(0.8,0.8,1.5);
+	// Escala maxima do espinho
+	UPROPERTY(EditAnywhere, Category="Thorn")
+	FVector MaxScale = FVector(1.2,1.2,2.0);
 	
 	float ModifierTarget = 450;
 	float ModifierOffsetThorns = -80;
 	
-	UPROPERTY()
 	TMap<int32, FEntityArrayWrapper> ParticlesIDCollided;
-	
-	// Escala minima do espinho
-	UPROPERTY(EditAnywhere)
-	FVector MinScale = FVector(0.8,0.8,1.5);
-	// Escala maxima do espinho
-	UPROPERTY(EditAnywhere)
-	FVector MaxScale = FVector(1.2,1.2,2.0);
 	
 	virtual void Initialize(USkillInstance* Owner) override;
 	virtual void Execute(FSkillContext& InSkillContext) override;

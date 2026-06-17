@@ -6,6 +6,7 @@
 #include "NiagaraSystem.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
+#include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/KismetMathLibrary.h"
 
@@ -36,10 +37,17 @@ void UOnHitSurface::Execute(FSkillContext& InSkillContext, FVector TargetLocatio
 		return;
 	}
 	
-	UNiagaraSystem* VFX = SkillDataAsset->ExecutionEffect.LoadSynchronous();
+	const UExecutionFeature* ExecutionFeature = SkillDataAsset->ExecutionFeature;
+	if (!ExecutionFeature)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UOnHitActor::Execute - ExecutionFeature invalida para SkillDataAsset '%s'."), *GetNameSafe(SkillDataAsset));
+		return;
+	}
+
+	UNiagaraSystem* VFX = ExecutionFeature->ExecutionEffect.Get();
 	if (!IsValid(VFX))
 	{
-		UE_LOG(LogTemp, Error, TEXT("UOnHitActor::Execute - VFX ExecutionEffect invalido para SkillDataAsset '%s'."), *GetNameSafe(SkillDataAsset));
+		UE_LOG(LogTemp, Error, TEXT("UOnHitActor::Execute - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(ExecutionFeature));
 		return;
 	}
 

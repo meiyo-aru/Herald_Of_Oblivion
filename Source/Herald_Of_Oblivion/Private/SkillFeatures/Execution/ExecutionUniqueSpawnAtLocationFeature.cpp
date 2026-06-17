@@ -32,11 +32,11 @@ void UExecutionUniqueSpawnAtLocationFeature::Execute(FSkillContext& InSkillConte
 		return;
 	}
 	
-	SkillInstance->GoOnCooldown();
 	
 	this->SpawnAtLocation(InSkillContext);
 	
 	SkillInstance->FinishSkill();		
+	SkillInstance->GoOnCooldown();
 }
 
 void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSkillContext)
@@ -55,11 +55,11 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 		return;
 	}
 	
-	UNiagaraSystem* VFX = SkillDataAsset->ExecutionEffect.LoadSynchronous();
+	UNiagaraSystem* VFX = this->ExecutionEffect.Get();
 	
 	if (!VFX)
 	{
-		UE_LOG(LogTemp, Error, TEXT("UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation - VFX ExecutionEffect invalido para SkillDataAsset '%s'."), *GetNameSafe(SkillDataAsset));
+		UE_LOG(LogTemp, Error, TEXT("UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(this));
 		return;
 	}
 	
@@ -90,10 +90,11 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 	NiagaraComp->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
 	NiagaraComp->SetFloatParameter(FName("MinLifeSpan"), this->MinLifeSpan);
 	NiagaraComp->SetFloatParameter(FName("MaxLifeSpan"), this->MaxLifeSpan);
+	NiagaraComp->SetFloatParameter(FName("Radius"), this->Intensity);
 
-	float Radius = SkillDataAsset->RadiusCollision * FMath::Clamp(InSkillContext.ChargeRatio, 0.2f, 1.0f);
+	float HitSphereRadius = this->CollisionRadius * FMath::Clamp(InSkillContext.ChargeRatio, 0.2f, 1.0f);
 
-	TArray<FOverlapResult> OutOverlaps = MakeHitSphere(Radius, InSkillContext, SpawnLocation);
+	TArray<FOverlapResult> OutOverlaps = MakeHitSphere(HitSphereRadius, InSkillContext, SpawnLocation);
 	
 	for (FOverlapResult OutOverlap : OutOverlaps)
 	{

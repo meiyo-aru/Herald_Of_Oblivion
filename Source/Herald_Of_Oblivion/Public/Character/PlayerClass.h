@@ -6,6 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "Core/EntityClass.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "InputMappingContext.h"
 #include "PlayerClass.generated.h"
 
 /**
@@ -14,8 +15,14 @@
  */
 
 
+struct FInputActionValue;
+class UInputAction;
+class UInputMappingContext;
 struct FSkillContext;
 class USkillDataAsset;
+
+// Delegate para notificar mudanças de vida
+DECLARE_DELEGATE_OneParam(FOnHealthChangedSignature, float);
 
 UCLASS(Blueprintable, BlueprintType)
 class HERALD_OF_OBLIVION_API APlayerClass : public AEntityClass
@@ -25,6 +32,9 @@ class HERALD_OF_OBLIVION_API APlayerClass : public AEntityClass
 public:
 	// Sets default values for this character's properties
 	APlayerClass();
+	
+	FOnHealthChangedSignature OnHealthChanged;
+
 
 // Métodos
 protected:
@@ -43,6 +53,9 @@ public:
 	// TArray<USkillInstance*> GetEquippedSkillsInstances() const {return this->EquippedSkillsInstances;};
 	// TArray<FPrimaryAssetId> GetUISkills() const {return this->UISkills;};
 
+	USpringArmComponent* GetSpringArmComponent() const {return this->SpringArm;};
+	UCameraComponent* GetCameraComponent() const {return this->Camera;};
+	
 protected:
 	virtual void DefineAttributes() override;
 	
@@ -73,9 +86,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="Functions")
 	void IncrementSimbolicAttribute(EEntitySimbolicAttributeEnum TargetSimbolicAttribute);
 	
-	// Move o jogador para o cursor
-	void MoveToMouseCursor();
-
 	// Métodos com lógica executada ao apertar e soltar a skil
 	void CastFirstSkill() {if (EquippedSkillsInstances.IsValidIndex(0)) HandleCastSkill(EquippedSkillsInstances[0]);};
 	void CastSecondSkill() {if (EquippedSkillsInstances.IsValidIndex(1)) HandleCastSkill(EquippedSkillsInstances[1]);};
@@ -95,9 +105,6 @@ protected:
 	// void CastThirdQuickAccess() {HandleCastQuickAccess(2);};
 	//
 	// void HandleCastQuickAccess(int slot);
-	
-	// Realiza um zoom na camera
-	FORCEINLINE void HandleZoom(float Delta);
 	
 // Propriedades
 	// Os ids das skills para serem exibidas nos menus
@@ -140,4 +147,26 @@ protected:
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Camera")
 	UCameraComponent* Camera;
+	
+	// Referências para o Editor
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TSoftObjectPtr<UInputMappingContext> DefaultMappingContext;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TSoftObjectPtr<UInputAction> MoveAction;
+	
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TSoftObjectPtr<UInputAction> CastSkillAction;
+	
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TSoftObjectPtr<UInputAction> MouseLookAction;
+	
+	// Função que processa o Input
+	UFUNCTION(BlueprintCallable, Category="Functions")
+	void Move(const FInputActionValue& Value);
+	
+	// Função que processa o Input
+	UFUNCTION(BlueprintCallable, Category="Functions")
+	void MouseLook(const FInputActionValue& Value);
+	
 };
