@@ -13,6 +13,7 @@
 #include "Core/EntityClass.h"
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "SkillFeatures/Execution/ExecutionSpawnProjectileFeature.h"
 
 
 // Sets default values
@@ -50,27 +51,30 @@ void ASkillActor::ReceiveParticleData_Implementation(const TArray<FBasicParticle
 	this->ParticlesProcessed++;
 }
 
-void ASkillActor::BindCollisionDelegatesFromSkillData(const USkillDataAsset* SkillData)
+void ASkillActor::BindCollisionDelegatesFromExecutionFeature(const UExecutionFeature* ExecutionFeature)
 {
-	if (!IsValid(this->CollisionComponent) || !SkillData)
+	if (!IsValid(this->CollisionComponent) || !ExecutionFeature)
 	{
 		return;
 	}
-
-	// Evita binds duplicados quando BeginPlay e Initialize chamam este método.
-	this->CollisionComponent->OnComponentBeginOverlap.RemoveDynamic(this, &ASkillActor::OnBeginOverlap);
-	this->CollisionComponent->OnComponentHit.RemoveDynamic(this, &ASkillActor::OnHit);
-
-	if (SkillData->bGenerateOverlapEvents)
+	const UExecutionSpawnProjectileFeature* ProjectileFeature = Cast<UExecutionSpawnProjectileFeature>(ExecutionFeature);
+	if (IsValid(ProjectileFeature))
 	{
-		this->CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ASkillActor::OnBeginOverlap);
-	}
-	if (SkillData->bGenerateHitEvents)
-	{
-		this->CollisionComponent->OnComponentHit.AddDynamic(this, &ASkillActor::OnHit);
-	}
+		// Evita binds duplicados quando BeginPlay e Initialize chamam este método.
+		this->CollisionComponent->OnComponentBeginOverlap.RemoveDynamic(this, &ASkillActor::OnBeginOverlap);
+		this->CollisionComponent->OnComponentHit.RemoveDynamic(this, &ASkillActor::OnHit);
 
-	this->bCollisionDelegatesBound = SkillData->bGenerateOverlapEvents || SkillData->bGenerateHitEvents;
+		if (ProjectileFeature->bGenerateOverlapEvents)
+		{
+			this->CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ASkillActor::OnBeginOverlap);
+		}
+		if (ProjectileFeature->bGenerateHitEvents)
+		{
+			this->CollisionComponent->OnComponentHit.AddDynamic(this, &ASkillActor::OnHit);
+		}
+
+		this->bCollisionDelegatesBound = ProjectileFeature->bGenerateOverlapEvents || ProjectileFeature->bGenerateHitEvents;
+	}
 }
 
 // Called when the game starts or when spawned
@@ -85,8 +89,8 @@ void ASkillActor::BeginPlay()
 	}
 
 	const USkillInstance* SkillInstance = this->Instance.Get();
-	const USkillDataAsset* SkillData = SkillInstance ? SkillInstance->GetDataAsset() : nullptr;
-	BindCollisionDelegatesFromSkillData(SkillData);
+	const UExecutionFeature* ExecutionFeature = SkillInstance ? SkillInstance->GetExecutionFeature() : nullptr;
+	BindCollisionDelegatesFromExecutionFeature(ExecutionFeature);
 }
 
 void ASkillActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -145,32 +149,61 @@ void ASkillActor::Initialize(USkillInstance* InInstance, AEntityClass* InEntity,
 		UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - SkillDataAsset invalido para SkillInstance '%s'."), *GetNameSafe(InInstance));
 		return;
 	}
+
+	const UExecutionSpawnProjectileFeature* ProjectileFeature = Cast<UExecutionSpawnProjectileFeature>(InInstance->GetExecutionFeature());
 	
-	if (InEntity)
+	
+	// Verifica se existe feature de projetil e configura os parametros dela
+	if (ProjectileFeature)
 	{
-		this->CollisionComponent->IgnoreActorWhenMoving(InEntity, true);
-		this->CollisionComponent->MoveIgnoreActors.Add(InEntity);
+		if (InEntity)
+		{
+			this->CollisionComponent->IgnoreActorWhenMoving(InEntity, true);
+			this->CollisionComponent->MoveIgnoreActors.Add(InEntity);
+		}
+	
+		this->CollisionComponent->SetGenerateOverlapEvents(ProjectileFeature->bGenerateOverlapEvents);
+		this->CollisionComponent->SetNotifyRigidBodyCollision(ProjectileFeature->bNotifyRigidBodyCollision);
+		this->CollisionComponent->SetCollisionEnabled(ProjectileFeature->CollisionEnabled);
+		this->CollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+		this->CollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, ProjectileFeature->PawnCollision);
+		this->CollisionComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ProjectileFeature->WorldStaticCollision);
+		this->CollisionComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ProjectileFeature->WorldDynamicCollision);
+		this->CollisionComponent->SetSphereRadius(ProjectileFeature->RadiusCollision);
+	
+		this->ProjectileMovementComponent->SetUpdatedComponent(this->CollisionComponent);
+		this->BindCollisionDelegatesFromExecutionFeature(ProjectileFeature);
+		
+		// Se tiver componente de Niagara, configura-o
+		if (this->NiagaraComponent)
+		{
+			UNiagaraSystem* VFX = ProjectileFeature->PathEffect.Get();
+			if (!IsValid(VFX))
+			{
+				UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX PathEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(ProjectileFeature));
+				return;
+			}
+
+			// Cria o NiagaraComponent e o registra no SkillActor
+		
+			this->NiagaraComponent->SetAsset(VFX);
+			this->NiagaraComponent->SetAutoDestroy(false); // Nós controlamos, não o componente
+			this->NiagaraComponent->SetComponentTickEnabled(true);
+		
+			this->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
+			// Seta o objeto callback
+			this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
+		}
 	}
 	
-	this->CollisionComponent->SetGenerateOverlapEvents(SkillData->bGenerateOverlapEvents);
-	this->CollisionComponent->SetNotifyRigidBodyCollision(SkillData->bNotifyRigidBodyCollision);
-	this->CollisionComponent->SetCollisionEnabled(SkillData->CollisionEnabled);
-	this->CollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-	this->CollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, SkillData->PawnCollision);
-	this->CollisionComponent->SetCollisionResponseToChannel(ECC_WorldStatic, SkillData->WorldStaticCollision);
-	this->CollisionComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, SkillData->WorldDynamicCollision);
-	
-	this->CollisionComponent->SetSphereRadius(SkillData->RadiusCollision);
-	
-	this->ProjectileMovementComponent->SetUpdatedComponent(this->CollisionComponent);
-	this->BindCollisionDelegatesFromSkillData(SkillData);
-	
+	/*
+	UExecutionFeature* ExecutionFeature = Cast<UExecutionFeature>(InInstance->GetExecutionFeature());
 	if (this->NiagaraComponent)
 	{
-		UNiagaraSystem* VFX = SkillData->PathEffect.LoadSynchronous();
-		if (!VFX)
+		UNiagaraSystem* VFX = ExecutionFeature->ExecutionEffect.Get();
+		if (!IsValid(VFX))
 		{
-			UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX PathEffect invalido para SkillDataAsset '%s'."), *GetNameSafe(SkillData));
+			UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(ProjectileFeature));
 			return;
 		}
 
@@ -183,7 +216,11 @@ void ASkillActor::Initialize(USkillInstance* InInstance, AEntityClass* InEntity,
 		this->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
 		// Seta o objeto callback
 		this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
-	}
+	}*/
+	
+	
+	
+
 }
 
 void ASkillActor::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,

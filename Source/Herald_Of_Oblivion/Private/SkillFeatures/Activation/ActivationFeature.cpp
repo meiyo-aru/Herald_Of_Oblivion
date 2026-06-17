@@ -3,6 +3,7 @@
 
 #include "SkillFeatures/Activation/ActivationFeature.h"
 
+#include "Character/PlayerClass.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
 
@@ -21,8 +22,12 @@ void UActivationFeature::Initialize(USkillInstance* Owner)
 void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 {
 	this->Context = InSkillContext;
+	
+	// Define o estágio atual da skill como Casting
 	InSkillContext.SkillStage = ESkillStage::Casting;
-	FHitResult HitCursor = GetCursorLocation(InSkillContext);
+	
+	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
+	FHitResult HitCursor = GetAimTarget(InSkillContext);
 	InSkillContext.StartSurfaceNormal = HitCursor.ImpactNormal;
 	InSkillContext.StartLocation = HitCursor.ImpactPoint;
 	
@@ -37,7 +42,8 @@ void UActivationFeature::CompleteActivation(FSkillContext& InSkillContext)
 	
 	if (InSkillContext.bActivated || !InSkillContext.SkillInstance.IsValid()) return;
 			
-	FHitResult HitCursor = GetCursorLocation(InSkillContext);
+	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
+	FHitResult HitCursor = GetAimTarget(InSkillContext);
 	InSkillContext.EndSurfaceNormal = HitCursor.ImpactNormal;
 	InSkillContext.EndLocation = HitCursor.ImpactPoint;
 	
@@ -54,6 +60,24 @@ void UActivationFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComp
 void UActivationFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
 {
 	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
+}
+
+
+FHitResult UActivationFeature::GetAimTarget(FSkillContext& InContext) const
+{
+	FHitResult HitResult;
+	
+	if (APlayerClass* Char = Cast<APlayerClass>(InContext.EntityOwner))
+	{
+		FVector Start = Char->GetCameraComponent()->GetComponentLocation();
+		FVector End = Start + Char->GetCameraComponent()->GetForwardVector() * 10000;
+		
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(Char);
+		
+		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility, CollisionParams);
+	}
+	return HitResult;
 }
 
 FHitResult UActivationFeature::GetCursorLocation(FSkillContext& InContext) const

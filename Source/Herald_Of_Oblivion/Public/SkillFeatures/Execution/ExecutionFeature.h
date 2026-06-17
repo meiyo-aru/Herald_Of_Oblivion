@@ -3,10 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/EngineTypes.h"
 #include "SkillFeatures/SkillFeature.h"
 #include "ExecutionFeature.generated.h"
 
 class UNiagaraComponent;
+class UNiagaraSystem;
+class USoundCue;
 /**
  * UExecutionFeature
  * Feature pai de todas as features do tipo Execution
@@ -17,6 +20,13 @@ class HERALD_OF_OBLIVION_API UExecutionFeature : public USkillFeature
 	GENERATED_BODY()
 	
 public:
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution", meta = (AssetBundles = "ExecutionVFX"))
+	TSoftObjectPtr<UNiagaraSystem> ExecutionEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution", meta = (AssetBundles = "ExecutionSFX"))
+	TSoftObjectPtr<USoundCue> ExecutionSound;
+	
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 	

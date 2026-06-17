@@ -7,6 +7,8 @@
 #include "Core/SkillActor.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
+#include "SkillFeatures/Activation/ActivationFeature.h"
+#include "SkillFeatures/Execution/ExecutionFeature.h"
 
 #include "Structs/SkillStructs.h"
 
@@ -14,57 +16,48 @@
 UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner, FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName)
 {	
 	if (!InEntityOwner || !InSkillDataAsset || !VFX || !Target ) return nullptr;
-	
-	if (InSkillDataAsset->bAuraInStaticMesh || InSkillDataAsset->bAuraInSkeletalMesh)
-	{
-		
-		UNiagaraComponent* DetachedNiagara = UNiagaraFunctionLibrary::SpawnSystemAttached(
-			VFX,
-			Target,
-			AttachSocketName,
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			EAttachLocation::SnapToTarget,
-			true
-		);
 
-		DetachedNiagara->SetFloatParameter(FName("MinCastTime"), InSkillDataAsset->MaxCastTime);
-		DetachedNiagara->SetFloatParameter(FName("MaxCastTime"), InSkillDataAsset->MaxCastTime);
-		DetachedNiagara->SetFloatParameter(FName("NormalOffsetAura"), InSkillDataAsset->NormalOffsetAura);
-		DetachedNiagara->SetFloatParameter(FName("SpawnRateAura"), InSkillDataAsset->SpawnRateAura);
-		DetachedNiagara->SetFloatParameter(FName("MaxLifeTimeAura"), InSkillDataAsset->MaxLifeTimeAura);
-		DetachedNiagara->SetFloatParameter(FName("MinLifeTimeAura"), InSkillDataAsset->MinLifeTimeAura);
-		
-		switch (AuraType)
-		{
-			case EAuraType::SkeletalMesh:
-				{
-					UNiagaraFunctionLibrary::OverrideSystemUserVariableSkeletalMeshComponent(DetachedNiagara,
-						TEXT("SkeletalMeshAura"),
-						Cast<USkeletalMeshComponent>(InEntityOwner->GetMesh()));
-					break;
-				}
-			case EAuraType::StaticMesh:
-				{
-					UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(Target);
-					StaticMeshComp->GetStaticMesh()->bAllowCPUAccess = true;
-					UNiagaraFunctionLibrary::OverrideSystemUserVariableStaticMeshComponent(DetachedNiagara,
-						TEXT("StaticMeshAura"),
-						Cast<UStaticMeshComponent>(StaticMeshComp));
-					break;
-				}
-			default:
+	UNiagaraComponent* AttachedNiagara = UNiagaraFunctionLibrary::SpawnSystemAttached(
+		VFX,
+		Target,
+		AttachSocketName,
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		EAttachLocation::SnapToTarget,
+		true
+	);
+	
+	switch (AuraType)
+	{
+		case EAuraType::SkeletalMesh:
+			{
+				UNiagaraFunctionLibrary::OverrideSystemUserVariableSkeletalMeshComponent(AttachedNiagara,
+					TEXT("SkeletalMeshAura"),
+					Cast<USkeletalMeshComponent>(InEntityOwner->GetMesh()));
 				break;
-		}
-		this->Context =  InSkillContext;
-		DetachedNiagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnAuraNiagaraSystemFinished);
-		return DetachedNiagara;
+			}
+		case EAuraType::StaticMesh:
+			{
+				UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(Target);
+				StaticMeshComp->GetStaticMesh()->bAllowCPUAccess = true;
+				UNiagaraFunctionLibrary::OverrideSystemUserVariableStaticMeshComponent(AttachedNiagara,
+					TEXT("StaticMeshAura"),
+					Cast<UStaticMeshComponent>(StaticMeshComp));
+				break;
+			}
+		default:
+			break;
 	}
-	return nullptr;
+	this->Context =  InSkillContext;
+	AttachedNiagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnAuraNiagaraSystemFinished);
+	return AttachedNiagara;
 }
 ASkillActor* USkillFeature::SpawnSkillActor(AEntityClass* InEntityOwner, FTransform SpawnTransform)
 {
+	
 	if (!IsValid(InEntityOwner) || !GetWorld()) return nullptr;
+
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("OPAAA")));
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = InEntityOwner;
@@ -87,7 +80,6 @@ UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotat
 	
 	if (IsValid(VFX))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CastEffect Load"));
 		
 		UNiagaraComponent* DetachedNiagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
 			GetWorld(),
@@ -106,11 +98,14 @@ UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotat
 	return nullptr;
 }
 
-UNiagaraComponent* USkillFeature::SpawnCastVfx(const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner, FSkillContext InSkillContext, FVector TargetLocation)
+/*UNiagaraComponent* USkillFeature::SpawnCastVfx(const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner, FSkillContext InSkillContext, FVector TargetLocation)
 {
 	if (!InEntityOwner || !InSkillDataAsset) return nullptr;
 	
-	if (UNiagaraSystem* CastVFX = InSkillDataAsset->CastEffect.LoadSynchronous())
+	UActivationFeature* ActivationFeature = InSkillDataAsset->ActivationFeature;
+	if (!ActivationFeature) return nullptr;
+
+	if (UNiagaraSystem* CastVFX = ActivationFeature->CastEffect.LoadSynchronous())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("CastEffect Load"));
 		
@@ -128,8 +123,8 @@ UNiagaraComponent* USkillFeature::SpawnCastVfx(const USkillDataAsset* InSkillDat
 		if (!InSkillContext.Direction.IsZero())
 			DetachedNiagara->SetVectorParameter(FName("Direction"), InSkillContext.Direction);
 		
-		DetachedNiagara->SetFloatParameter(FName("MinCastTime"), InSkillDataAsset->MinCastTime);
-		DetachedNiagara->SetFloatParameter(FName("MaxCastTime"), InSkillDataAsset->MaxCastTime);
+		DetachedNiagara->SetFloatParameter(FName("MinCastTime"), ActivationFeature->MinCastTime);
+		DetachedNiagara->SetFloatParameter(FName("MaxCastTime"), ActivationFeature->MaxCastTime);
 			
 		this->Context = InSkillContext;
 		
@@ -137,7 +132,7 @@ UNiagaraComponent* USkillFeature::SpawnCastVfx(const USkillDataAsset* InSkillDat
 		return DetachedNiagara;
 	}
 	return nullptr;
-}
+}*/
 
 void USkillFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
 {

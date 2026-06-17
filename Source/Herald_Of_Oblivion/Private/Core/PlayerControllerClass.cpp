@@ -2,13 +2,16 @@
 
 
 #include "Core/PlayerControllerClass.h"
+#include "Core/UI_Default.h"
 
 APlayerControllerClass::APlayerControllerClass()
 {
 	// Permite que o mouse apareça na tela
-	bShowMouseCursor = true;
+	bShowMouseCursor = false;
 	bEnableClickEvents = true;
 }
+
+
 
 void APlayerControllerClass::SetupInputComponent()
 {
@@ -19,5 +22,16 @@ void APlayerControllerClass::SetupInputComponent()
 
 void APlayerControllerClass::Menu()
 {
+}
+
+void APlayerControllerClass::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	if (HUDClass)
+	{
+		HUDWidget = CreateWidget<UUI_Default>(this, HUDClass);
+		if (HUDWidget) HUDWidget->AddToViewport();
+	}
 }
 

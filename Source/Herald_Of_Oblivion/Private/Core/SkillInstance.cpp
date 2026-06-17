@@ -32,7 +32,6 @@ void USkillInstance::CastSkill()
 {
 	this->bIsCasting = true;
 	this->CurrentContext.Reset();
-	this->OnSkillCastDelegate.Broadcast(this->CurrentContext);
 	
 	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
 	if (!AssetManager)
@@ -53,6 +52,7 @@ void USkillInstance::CastSkill()
 		UE_LOG(LogTemp, Error, TEXT("USkillInstance::CastSkill - SkillDataAsset invalido."));
 		return;
 	}
+	
 
 	if (!this->EndingHandle || !this->EndingHandle.IsValid())
 	{
@@ -66,16 +66,17 @@ void USkillInstance::CastSkill()
 		);
 	}	
 	
+
+	this->OnSkillCastDelegate.Broadcast(this->CurrentContext);
+
+	/*
 	if (!this->AuraHandle || !this->AuraHandle.IsValid())
 	{
-		if (Data->bAuraWhenFinish)
+		if (Data->ExecutionFeature)
 		{
 			TArray<FName> AuraBundles;
-			if (Data->bAuraInSkeletalMesh)
-				AuraBundles.Add("SkeletalMeshAuraVFX");
-	
-			if (Data->bAuraInStaticMesh)
-				AuraBundles.Add("StaticMeshAuraVFX");
+			if (Data->ExecutionFeature->bAura)
+				AuraBundles.Add("AuraVFX");
 			
 			this->AuraHandle = AssetManager->LoadPrimaryAsset(
 				Data->GetPrimaryAssetId(),
@@ -86,7 +87,7 @@ void USkillInstance::CastSkill()
 				})
 			);
 		}
-	}
+	}*/
 }
 
 void USkillInstance::GoOnCooldown()
@@ -112,6 +113,7 @@ void USkillInstance::GoOnCooldown()
 			{
 				return;
 			}
+
 			WeakThis->bInCooldown = false;
 		},
 		 CDTime,

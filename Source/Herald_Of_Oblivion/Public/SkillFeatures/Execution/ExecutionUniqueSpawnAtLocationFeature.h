@@ -16,13 +16,18 @@ class HERALD_OF_OBLIVION_API UExecutionUniqueSpawnAtLocationFeature : public UEx
 	GENERATED_BODY()
 	
 public:
-	// Mínimo de tempo de vida do niagara e do actor
-	UPROPERTY(EditAnywhere)
+	// Mínimo de tempo de vida do niagara
+	UPROPERTY(EditAnywhere, Category="Properties")
 	float MinLifeSpan = 0.0f;
-	// Máximo de tempo de vida do niagara e do actor
-	UPROPERTY(EditAnywhere)
+	// Máximo de tempo de vida do niagara
+	UPROPERTY(EditAnywhere, Category="Properties")
 	float MaxLifeSpan = 1.0f;
 	
+	UPROPERTY(EditAnywhere, Category="Properties")
+	float Intensity = 0.0f;
+	UPROPERTY(EditAnywhere, Category="Properties")
+	float CollisionRadius = 0.0f;
+
 	virtual void Initialize(USkillInstance* Owner) override;
 	virtual void Execute(FSkillContext& InSkillContext) override;
 	void SpawnAtLocation(FSkillContext& InSkillContext);

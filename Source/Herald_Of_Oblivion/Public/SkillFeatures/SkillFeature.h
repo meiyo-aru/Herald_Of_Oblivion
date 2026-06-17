@@ -29,12 +29,16 @@ class APlayerClass;
 class USkillInstance;
 class UNiagaraComponent;
 
-UCLASS(Abstract, BlueprintType, EditInlineNew, DefaultToInstanced)
-class HERALD_OF_OBLIVION_API USkillFeature : public UObject
+UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
+class HERALD_OF_OBLIVION_API USkillFeature : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 	
 public:
+	virtual FPrimaryAssetId GetPrimaryAssetId() const override {
+		return FPrimaryAssetId("SkillFeatureFX", GetFName());
+	}
+	
 	// Um Struct que guarda todos os dados relevantes sobre o evento de input
 	UPROPERTY()
 	FSkillContext Context;
@@ -53,6 +57,10 @@ public:
 	
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) {};
+
+	// Lógica de ativação (opcional para features do tipo activation)
+	virtual void StartActivation(FSkillContext& InSkillContext) {};
+	virtual void CompleteActivation(FSkillContext& InSkillContext) {};
 	
 	// Para efeitos de habilidades em que nao quero criar um actor, apenas o niagara é necessário e ele precisa estar anexado a algum socket
 	UNiagaraComponent* SpawnAuraVFX(UNiagaraSystem* VFX, const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner,

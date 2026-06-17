@@ -21,6 +21,7 @@ class USkillInstance;
 class AEntityClass;
 class UNiagaraSystem;
 class USkillDataAsset;
+class UExecutionFeature;
 
 UCLASS(Blueprintable, BlueprintType)
 class HERALD_OF_OBLIVION_API ASkillActor : public AActor, public INiagaraParticleCallbackHandler
@@ -94,6 +95,6 @@ public:
 	UProjectileMovementComponent* ProjectileMovementComponent = nullptr;
 
 private:
-	void BindCollisionDelegatesFromSkillData(const USkillDataAsset* SkillData);
+	void BindCollisionDelegatesFromExecutionFeature(const UExecutionFeature* ExecutionFeature);
 	bool bCollisionDelegatesBound = false;
 };
