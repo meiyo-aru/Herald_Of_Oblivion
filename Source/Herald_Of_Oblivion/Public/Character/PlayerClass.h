@@ -35,7 +35,6 @@ public:
 	
 	FOnHealthChangedSignature OnHealthChanged;
 
-
 // Métodos
 protected:
 	// Called when the game starts or when spawned

@@ -124,7 +124,6 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	}
 
 	SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
-	SkillActor->SkillContext = InSkillContext;
 
 	// Timer de vida máxima (fallback)
 	if (this->LifeSpan > 0.0f)
@@ -165,6 +164,9 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 void UExecutionSpawnProjectileFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
 {
 	Super::OnNiagaraSystemFinished(FinishedComponent);
+	AActor* Actor = FinishedComponent->GetOwner();
+	if (IsValid(Actor))
+		Actor->Destroy();
 }
 
 void UExecutionSpawnProjectileFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)

@@ -37,17 +37,33 @@ public:
 	// Escala maxima do espinho
 	UPROPERTY(EditAnywhere, Category="Thorn")
 	FVector MaxScale = FVector(1.2,1.2,2.0);
-	
-	float ModifierTarget = 450;
-	float ModifierOffsetThorns = -80;
+	// Quantidade máxima de espinhos
+	UPROPERTY(EditAnywhere, Category="Thorn")
+	int8 MaxThornsAmount = 5;
+	// Espaçamento entre os espinhos
+	UPROPERTY(EditAnywhere, Category="Thorn")
+	float MaxSpacingBetweenThorns = 60.0f;
+	// Range máximo da habilidade
+	UPROPERTY(EditAnywhere, Category="Thorn")
+	float MaxRange = 300.0f;
 	
 	TMap<int32, FEntityArrayWrapper> ParticlesIDCollided;
 	
+	virtual void CleanNiagara() override;
 	virtual void Initialize(USkillInstance* Owner) override;
 	virtual void Execute(FSkillContext& InSkillContext) override;
 	void SpawnThorn(FSkillContext& InSkillContext);
 	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
 	virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
+	void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext);
 	// Executa alguma lógica nas particulas do niagara
+	/*
 	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
+	*/
+	
+	TArray<FHitResult> CheckSurfaceInAim(FSkillContext& InSkillContext, TArray<ESurfaceType>& InValidSurfaces);
+	TArray<FHitResult> LineTraceAroundLocation(FVector StartLocation, FVector EndLocation,
+											   FCollisionQueryParams CollisionParams,
+											   TArray<ESurfaceType>& InValidSurfaces);
+
 };

@@ -24,6 +24,17 @@ enum class EAuraType : uint8
 	None			UMETA(DisplayName = "None")
 };
 
+// Enum para o tipo de superfície
+UENUM(BlueprintType)
+enum class ESurfaceType : uint8
+{
+	Floor       UMETA(DisplayName = "Floor"),
+	Wall        UMETA(DisplayName = "Wall"),
+	Ceiling     UMETA(DisplayName = "Ceiling"),
+	Irregular   UMETA(DisplayName = "Irregular"),
+	None        UMETA(DisplayName = "None")
+};
+
 class USkillDataAsset;
 class APlayerClass;
 class USkillInstance;
@@ -42,6 +53,11 @@ public:
 	// Um Struct que guarda todos os dados relevantes sobre o evento de input
 	UPROPERTY()
 	FSkillContext Context;
+	
+	// Niagara Components spawnados, depois serao destruidos ao terminar a logica da feature
+	UPROPERTY()
+	TArray<UNiagaraComponent*> SpawnedNiagaraComponents = TArray<UNiagaraComponent*>();
+
 	
 	// // A entidade que castou a habilidade
 	// UPROPERTY()
@@ -62,6 +78,7 @@ public:
 	virtual void StartActivation(FSkillContext& InSkillContext) {};
 	virtual void CompleteActivation(FSkillContext& InSkillContext) {};
 	
+
 	// Para efeitos de habilidades em que nao quero criar um actor, apenas o niagara é necessário e ele precisa estar anexado a algum socket
 	UNiagaraComponent* SpawnAuraVFX(UNiagaraSystem* VFX, const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner,
 						FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName = NAME_None);
@@ -75,6 +92,7 @@ public:
 	// Limpa os handles utilizados
 	UFUNCTION()
 	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent);
+	virtual void CleanNiagara();
 	virtual TArray<FOverlapResult> MakeHitSphere(float Radius, FSkillContext& InSkillContext, FVector Location);
 	virtual void OnHitEntity(FSkillContext& InSkillContext);
 	UFUNCTION()

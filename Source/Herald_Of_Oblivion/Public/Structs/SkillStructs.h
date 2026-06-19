@@ -67,11 +67,14 @@ public:
 	UPROPERTY(EditAnywhere)
 	FVector Direction = FVector::ZeroVector;
 	
-	// Alvo da habilidade
+	// Entidade que esta na localizacao inicial
 	UPROPERTY(EditAnywhere)
-	TWeakObjectPtr<AEntityClass> TargetEntity;
+	TWeakObjectPtr<AEntityClass> EntityOnStartLocation;
 	
-
+	// Entidade na localizacao final
+	UPROPERTY(EditAnywhere)
+	TWeakObjectPtr<AEntityClass> EntityOnEndLocation;
+	
 	UPROPERTY(VisibleAnywhere)
 	EHitOverlapResultType HitOverlapResultType = EHitOverlapResultType::None;
 

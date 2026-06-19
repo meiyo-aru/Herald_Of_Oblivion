@@ -167,6 +167,7 @@ void USkillInstance::PrepareForPooling()
 	this->OnSkillCastDelegate.Clear();
 	this->OnSkillReleasedDelegate.Clear();
 	this->OnSkillActivateDelegate.Clear();
+	this->OnSkillHitDelegate.Clear();
 	
 	this->ReleaseCastingHandle();
 	this->ReleaseEndingHandle();

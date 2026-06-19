@@ -27,7 +27,18 @@ void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 	InSkillContext.SkillStage = ESkillStage::Casting;
 	
 	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
-	FHitResult HitCursor = GetAimTarget(InSkillContext);
+	FHitResult HitCursor = GetAimTarget(InSkillContext, 30.0f);
+	if (AActor* HittedActor = HitCursor.GetActor())
+	{
+		if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
+		{
+			InSkillContext.EntityOnStartLocation = Entity;
+		} else
+		{
+			InSkillContext.EntityOnEndLocation = nullptr;
+		}
+	}
+	
 	InSkillContext.StartSurfaceNormal = HitCursor.ImpactNormal;
 	InSkillContext.StartLocation = HitCursor.ImpactPoint;
 	
@@ -43,7 +54,20 @@ void UActivationFeature::CompleteActivation(FSkillContext& InSkillContext)
 	if (InSkillContext.bActivated || !InSkillContext.SkillInstance.IsValid()) return;
 			
 	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
-	FHitResult HitCursor = GetAimTarget(InSkillContext);
+	
+	FHitResult HitCursor = GetAimTarget(InSkillContext, 30.0f);
+	if (AActor* HittedActor = HitCursor.GetActor())
+	{
+			UE_LOG(LogTemp, Warning, TEXT("bateu no ator: %s"), *HittedActor->GetName());
+		if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
+		{
+			InSkillContext.EntityOnEndLocation = Entity;
+		} else
+		{
+			InSkillContext.EntityOnEndLocation = nullptr;
+		}
+	}
+	
 	InSkillContext.EndSurfaceNormal = HitCursor.ImpactNormal;
 	InSkillContext.EndLocation = HitCursor.ImpactPoint;
 	
@@ -63,7 +87,7 @@ void UActivationFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* Finished
 }
 
 
-FHitResult UActivationFeature::GetAimTarget(FSkillContext& InContext) const
+FHitResult UActivationFeature::GetAimTarget(FSkillContext& InContext, float Sensibility) const
 {
 	FHitResult HitResult;
 	
@@ -71,11 +95,9 @@ FHitResult UActivationFeature::GetAimTarget(FSkillContext& InContext) const
 	{
 		FVector Start = Char->GetCameraComponent()->GetComponentLocation();
 		FVector End = Start + Char->GetCameraComponent()->GetForwardVector() * 10000;
-		
 		FCollisionQueryParams CollisionParams;
 		CollisionParams.AddIgnoredActor(Char);
-		
-		GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility, CollisionParams);
+		GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::MakeFromRotator(FRotator::ZeroRotator),ECollisionChannel::ECC_Visibility, FCollisionShape::MakeSphere(Sensibility), CollisionParams);
 	}
 	return HitResult;
 }
@@ -92,4 +114,9 @@ FHitResult UActivationFeature::GetCursorLocation(FSkillContext& InContext) const
 		HitCursor.Location.Z += 10;
 	}
 	return HitCursor;
+}
+
+void UActivationFeature::CleanNiagara()
+{
+	Super::CleanNiagara();
 }
