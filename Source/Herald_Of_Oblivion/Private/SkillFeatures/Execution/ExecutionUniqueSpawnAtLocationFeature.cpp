@@ -11,6 +11,11 @@
 #include "SkillFeatures/Execution/ExecutionSpawnProjectileFeature.h"
 #include "Kismet/KismetMathLibrary.h"
 
+void UExecutionUniqueSpawnAtLocationFeature::CleanNiagara()
+{
+	Super::CleanNiagara();
+}
+
 void UExecutionUniqueSpawnAtLocationFeature::Initialize(USkillInstance* Owner)
 {
 	Super::Initialize(Owner);
@@ -112,6 +117,9 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 void UExecutionUniqueSpawnAtLocationFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
 {
 	Super::OnNiagaraSystemFinished(FinishedComponent);
+	AActor* Actor = FinishedComponent->GetOwner();
+	if (IsValid(Actor))
+		Actor->Destroy();
 }
 
 void UExecutionUniqueSpawnAtLocationFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)

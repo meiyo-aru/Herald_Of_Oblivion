@@ -22,7 +22,6 @@ ASkillActor::ASkillActor()
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// ✅ Cria SceneComponent como Root (sem collision)
 	this->CollisionComponent = CreateDefaultSubobject<USphereComponent>(FName("Collision Component"));
 	SetRootComponent(this->CollisionComponent);
 
@@ -154,7 +153,7 @@ void ASkillActor::Initialize(USkillInstance* InInstance, AEntityClass* InEntity,
 	
 	
 	// Verifica se existe feature de projetil e configura os parametros dela
-	if (ProjectileFeature)
+	if (IsValid(ProjectileFeature))
 	{
 		if (InEntity)
 		{
@@ -177,50 +176,35 @@ void ASkillActor::Initialize(USkillInstance* InInstance, AEntityClass* InEntity,
 		// Se tiver componente de Niagara, configura-o
 		if (this->NiagaraComponent)
 		{
+			this->NiagaraComponent->SetAutoDestroy(false); // Nós controlamos, não o componente
+			this->NiagaraComponent->SetComponentTickEnabled(true);
+			this->NiagaraComponent->Activate();
+		
+			this->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
+			// Seta o objeto callback
+			this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
+			
 			UNiagaraSystem* VFX = ProjectileFeature->PathEffect.Get();
 			if (!IsValid(VFX))
 			{
 				UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX PathEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(ProjectileFeature));
 				return;
 			}
-
-			// Cria o NiagaraComponent e o registra no SkillActor
-		
 			this->NiagaraComponent->SetAsset(VFX);
-			this->NiagaraComponent->SetAutoDestroy(false); // Nós controlamos, não o componente
+		}
+	} else
+	{
+		// Se tiver componente de Niagara, configura-o
+		if (this->NiagaraComponent)
+		{
+			this->NiagaraComponent->SetAutoDestroy(true);
 			this->NiagaraComponent->SetComponentTickEnabled(true);
+			this->NiagaraComponent->Activate();
 		
-			this->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
 			// Seta o objeto callback
 			this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
 		}
 	}
-	
-	/*
-	UExecutionFeature* ExecutionFeature = Cast<UExecutionFeature>(InInstance->GetExecutionFeature());
-	if (this->NiagaraComponent)
-	{
-		UNiagaraSystem* VFX = ExecutionFeature->ExecutionEffect.Get();
-		if (!IsValid(VFX))
-		{
-			UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(ProjectileFeature));
-			return;
-		}
-
-		// Cria o NiagaraComponent e o registra no SkillActor
-		
-		this->NiagaraComponent->SetAsset(VFX);
-		this->NiagaraComponent->SetAutoDestroy(false); // Nós controlamos, não o componente
-		this->NiagaraComponent->SetComponentTickEnabled(true);
-		
-		this->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
-		// Seta o objeto callback
-		this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
-	}*/
-	
-	
-	
-
 }
 
 void ASkillActor::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,

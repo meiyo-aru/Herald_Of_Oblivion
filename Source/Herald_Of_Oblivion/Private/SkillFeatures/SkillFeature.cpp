@@ -3,14 +3,14 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "Character/PlayerClass.h"
 #include "Core/EntityClass.h"
 #include "Core/SkillActor.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
-#include "SkillFeatures/Activation/ActivationFeature.h"
-#include "SkillFeatures/Execution/ExecutionFeature.h"
-
+#include "ProfilingDebugging/CookStats.h"
 #include "Structs/SkillStructs.h"
+
 
 
 UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner, FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName)
@@ -149,6 +149,31 @@ void USkillFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent
 	FinishedComponent->OnSystemFinished.RemoveAll(this);
 }
 
+void USkillFeature::CleanNiagara()
+{
+	for (UNiagaraComponent* SpawnedNiagaraComponent : this->SpawnedNiagaraComponents)
+	{
+		if (IsValid(SpawnedNiagaraComponent))
+		{
+			SpawnedNiagaraComponent->SetFloatParameter(FName("SpawnRate"), 0.0f);
+			
+			FTimerHandle Timer;
+			
+			GetWorld()->GetTimerManager().SetTimer(
+				Timer, 
+				[SpawnedNiagaraComponent]() 
+				{
+					SpawnedNiagaraComponent->Deactivate();
+					SpawnedNiagaraComponent->DestroyComponent();
+				},
+					6.0f,
+				false,
+				-1
+			);
+		}
+	}
+
+}
 TArray<FOverlapResult> USkillFeature::MakeHitSphere(float Radius, FSkillContext& InSkillContext, FVector Location)
 {
 	// 1. Definir a forma da colisão

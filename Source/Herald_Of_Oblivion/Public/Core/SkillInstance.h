@@ -27,8 +27,7 @@ struct FSkillContext;
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSkillCast, FSkillContext&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSkillReleased, FSkillContext&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSkillActivate, FSkillContext&);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHitSurface, FSkillContext&, FVector TargetLocation);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHitEntity, FSkillContext&, AEntityClass* TargetEntity);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnSkillHit, FSkillContext&, FHitResult* HitResult);
 
 UCLASS(Blueprintable, BlueprintType)
 class HERALD_OF_OBLIVION_API USkillInstance : public UObject
@@ -50,8 +49,7 @@ public:
 	FOnSkillCast OnSkillCastDelegate;
 	FOnSkillReleased OnSkillReleasedDelegate;
 	FOnSkillActivate OnSkillActivateDelegate;
-	FOnHitSurface OnHitSurface;
-	FOnHitEntity OnHitEntity;
+	FOnSkillHit OnSkillHitDelegate;
 	
 	// TArray<TSoftObjectPtr<UEffect>> AGetEffects() const {return Effects;};
 private:

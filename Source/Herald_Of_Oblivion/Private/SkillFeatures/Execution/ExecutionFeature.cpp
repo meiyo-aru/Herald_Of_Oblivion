@@ -29,6 +29,11 @@ void UExecutionFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedC
 	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
 }
 
+void UExecutionFeature::CleanNiagara()
+{
+	Super::CleanNiagara();
+}
+
 void UExecutionFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext)
 {
 }

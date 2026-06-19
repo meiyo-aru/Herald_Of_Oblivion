@@ -14,27 +14,6 @@ USkillDataAsset::USkillDataAsset()
 {
 	
 }
-// #if WITH_EDITOR
-// void USkillDataAsset::PostEditChangeProperty(FPropertyChangedEvent& e)
-// {
-// 	Super::PostEditChangeProperty(PropertyChangedEvent);
-//     
-// 	// Log quando mudar no editor
-// 	UE_LOG(LogTemp, Log, TEXT("PostEditChange: Features count = %d"), Features.Num());
-//     
-// 	for (int32 i = 0; i < EShaderOptionalDataKey::Features.Num(); i++)
-// 	{
-// 		if (Features[i])
-// 		{
-// 			UE_LOG(LogTemp, Log, TEXT("  Feature[%d]: %s"), i, *Features[i]->GetName());
-// 		}
-// 		else
-// 		{
-// 			UE_LOG(LogTemp, Warning, TEXT("  Feature[%d]: NULLPTR!"), i);
-// 		}
-// 	}
-// }
-// #endif
 // Recebe uma entidade e cria uma instancia da habilidade para ela
 USkillInstance* USkillDataAsset::CreateInstance(AEntityClass* Owner)
 {

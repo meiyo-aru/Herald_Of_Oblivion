@@ -21,7 +21,7 @@ void FSkillContext::Reset()
 {
 	SkillActor = nullptr;
 	Direction = FVector::ZeroVector;
-	TargetEntity = nullptr;
+	EntityOnStartLocation = nullptr;
 	HitOverlapResultType = EHitOverlapResultType::None;
 	HitResult = FHitResult();
 	OverlapResult = FOverlapResult();

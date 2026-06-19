@@ -137,32 +137,15 @@ void UActivationCastWithHoldFeature::CompleteActivation(FSkillContext& InSkillCo
 
 void UActivationCastWithHoldFeature::CleanNiagara()
 {
-	for (UNiagaraComponent* SpawnedNiagaraComponent : this->SpawnedNiagaraComponents)
-	{
-		if (IsValid(SpawnedNiagaraComponent))
-		{
-			SpawnedNiagaraComponent->SetFloatParameter(FName("SpawnRate"), 0.0f);
-			
-			FTimerHandle Timer;
-			
-			GetWorld()->GetTimerManager().SetTimer(
-				Timer, 
-				[SpawnedNiagaraComponent]() 
-				{
-					SpawnedNiagaraComponent->Deactivate();
-				},
-					6.0f,
-				false,
-				-1
-			);
-		}
-	}
-
+	Super::CleanNiagara();
 }
 
 void UActivationCastWithHoldFeature::OnNiagaraSystemFinished(class UNiagaraComponent* FinishedComponent)
 {
 	Super::OnNiagaraSystemFinished(FinishedComponent);
+	AActor* Actor = FinishedComponent->GetOwner();
+	if (IsValid(Actor))
+		Actor->Destroy();
 }
 
 void UActivationCastWithHoldFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)

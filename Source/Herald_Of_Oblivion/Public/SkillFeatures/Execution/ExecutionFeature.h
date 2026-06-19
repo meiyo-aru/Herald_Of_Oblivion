@@ -35,7 +35,8 @@ public:
 
 	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
 	virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
-	
+	virtual void CleanNiagara() override;
+
 	// Executa alguma lógica nas particulas do niagara
 	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext);
 	UPROPERTY()

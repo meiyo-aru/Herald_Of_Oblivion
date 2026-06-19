@@ -4,11 +4,19 @@
 #include "SkillFeatures/Execution/ExecutionThornFeature.h"
 
 #include "NiagaraComponent.h"
+#include "NiagaraDataInterfaceArrayFunctionLibrary.h"
+#include "Chaos/Utilities.h"
+#include "Character/PlayerClass.h"
 #include "Core/EntityClass.h"
 #include "Core/SkillActor.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
 #include "Kismet/KismetMathLibrary.h"
+
+void UExecutionThornFeature::CleanNiagara()
+{
+	Super::CleanNiagara();
+}
 
 void UExecutionThornFeature::Initialize(USkillInstance* Owner)
 {
@@ -66,6 +74,18 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 		return;
 	}
 	
+	TArray<ESurfaceType> ValidSurfaces;
+	ValidSurfaces.Add(ESurfaceType::Wall);
+	ValidSurfaces.Add(ESurfaceType::Floor);
+	
+	TArray<FHitResult> ValidHits = CheckSurfaceInAim(InSkillContext, ValidSurfaces);
+
+	if (ValidHits.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - Superfície inválida."));
+		return;
+	}
+	
 	UE_LOG(LogTemp, Warning, TEXT("ExecutionThorn Feature OK"));
 	
 	const FVector SpawnLocation = InSkillContext.StartLocation;
@@ -83,48 +103,78 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 	
 	ASkillActor* SkillActor = SpawnSkillActor(EntityOwner, SpawnTransform);
 	
-	if (!SkillActor)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - Falha ao spawnar Skill Actor."));
-		return;
-	}
-	
-	FVector TargetLocation = InSkillContext.EndLocation - InSkillContext.StartLocation;
-	TargetLocation.Z += this->ModifierTarget;
-	
-	FVector DirectionWithoutZ = (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal();
-	DirectionWithoutZ.Z = 0.0f;
-	
-	if (this->MinLifeSpan > 0.0f)
-	{
-		SkillActor->SetLifeSpan(this->MinLifeSpan);
-	}
-
-	// Inicializa o Actor
+	SkillActor->NiagaraComponent->SetAsset(VFX);
 	SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
-	SkillActor->SkillContext = InSkillContext;
-
-	if (IsValid(SkillActor->NiagaraComponent))
+	
+	if (IsValid(SkillActor->NiagaraComponent) && SkillActor->NiagaraComponent->GetAsset() != nullptr)
 	{
+		TArray<FVector> ThornLocations;
+		TArray<FQuat> ThornDirections;
+		for (FHitResult Hit : ValidHits)
+		{
+			if (InSkillContext.EntityOnEndLocation.Get())
+			{
+				ThornDirections.Add(FRotationMatrix::MakeFromZ((InSkillContext.EntityOnEndLocation->GetActorLocation() - Hit.ImpactPoint).GetSafeNormal()).ToQuat());
+			} else
+			{
+				FVector ThornDirection;
+				FVector FinalEndLocation = InSkillContext.EndLocation;
+				
+				if (Hit.ImpactNormal.Z > 0.0f)
+				{
+					FinalEndLocation.Z = Hit.ImpactPoint.Z + 280.0f;
+					
+					ThornDirection = (FinalEndLocation - Hit.ImpactPoint).GetSafeNormal();
+				} else if (Hit.ImpactNormal.Z < 0.0f)
+				{
+					FinalEndLocation.Z = Hit.ImpactPoint.Z - 280.0f;
+					
+					ThornDirection = (FinalEndLocation - Hit.ImpactPoint).GetSafeNormal();
+				} else
+				{
+					ThornDirection = (FinalEndLocation - Hit.ImpactPoint).GetSafeNormal();
+					
+					Hit.ImpactNormal.Normalize();
+					
+					float Dot = FMath::Abs(FVector::DotProduct(ThornDirection, Hit.ImpactNormal));
+
+					if (Dot <= 0.3f)
+					{
+						FVector DirecaoLocal = FVector(0.0f, 0.0f, 1.0f); // Z puro
+						FRotator Rotator = UKismetMathLibrary::MakeRotFromZ(Hit.ImpactNormal);
+						ThornDirection = Rotator.RotateVector(DirecaoLocal);
+					}
+				}
+				
+				ThornDirections.Add(FRotationMatrix::MakeFromZ(ThornDirection).ToQuat());
+			}
+			ThornLocations.Add(Hit.ImpactPoint);
+		}
+		
 		SkillActor->NiagaraComponent->SetFloatParameter(FName("MinLifeSpan"), this->MinLifeSpan);
 		SkillActor->NiagaraComponent->SetFloatParameter(FName("MaxLifeSpan"), this->MaxLifeSpan);
-		SkillActor->NiagaraComponent->SetFloatParameter(FName("ModifierOffsetThorns"), this->ModifierOffsetThorns);
-		SkillActor->NiagaraComponent->SetVectorParameter(FName("MaxScale"), this->MaxScale);
+		SkillActor->NiagaraComponent->SetVectorParameter(FName("MaxScale"), FMath::Clamp(InSkillContext.ChargeRatio, 0.5, 1.0) * this->MaxScale);
 		SkillActor->NiagaraComponent->SetVectorParameter(FName("MinScale"), this->MinScale);
-		SkillActor->NiagaraComponent->SetVectorParameter(FName("TargetLocation"), TargetLocation);
-		SkillActor->NiagaraComponent->SetVectorParameter(FName("DirectionWithoutZ"), DirectionWithoutZ);
+		SkillActor->NiagaraComponent->SetFloatParameter(FName("ThornAmount"), FMath::Clamp(InSkillContext.ChargeRatio, 0.3, 1.0) * MaxThornsAmount);
+		UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayQuat(SkillActor->NiagaraComponent, FName(TEXT("User.ThornDirection")), ThornDirections);
+		UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(SkillActor->NiagaraComponent, FName(TEXT("User.ThornLocation")), ThornLocations);
+		
 
 		if (!SkillActor->NiagaraComponent->OnSystemFinished.IsAlreadyBound(this, &UExecutionThornFeature::OnNiagaraSystemFinished))
 		{
 			SkillActor->NiagaraComponent->OnSystemFinished.AddDynamic(this, &UExecutionThornFeature::OnNiagaraSystemFinished);
 		}
-		SkillActor->NiagaraComponent->Activate();
+		
+
 	}
 }
 
 void UExecutionThornFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
 {
 	Super::OnNiagaraSystemFinished(FinishedComponent);
+	AActor* Actor = FinishedComponent->GetOwner();
+	if (IsValid(Actor))
+		Actor->Destroy();
 }
 
 void UExecutionThornFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
@@ -138,7 +188,7 @@ void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticl
 	// if (this->ParticlesProcessed >= Data.Num()) return;
 	FVector StartLocation = SkillContext.StartLocation; // ou seu Start Location real
 	FVector TargetLocation = SkillContext.EndLocation;    // ou seu Target real
-    TargetLocation.Z += this->ModifierTarget;
+    TargetLocation.Z += 0.0f;
 	
 	// O vetor que aponta do Start para o Target
 	FVector Direction = (TargetLocation - StartLocation).GetSafeNormal();
@@ -152,7 +202,7 @@ void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticl
 		float BaseMeshHeight = 99.0f;
 		float ScaledLength = BaseMeshHeight * ParticleScale.Z;
 		FVector TipPosition = Particle.Position + (Direction * ScaledLength);
-		TipPosition.Z -= this->ModifierOffsetThorns;
+		TipPosition.Z -= 0.0f;
 		
 		// 1. Definir a forma da colisão (usando a metade do tamanho, como na Box)
 		FCollisionShape MyHitSphere = FCollisionShape::MakeSphere(2.0f);
@@ -205,4 +255,90 @@ void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticl
 		}
 		
 	}
+}
+
+TArray<FHitResult> UExecutionThornFeature::CheckSurfaceInAim(FSkillContext& InSkillContext, TArray<ESurfaceType>& InValidSurfaces)
+{
+	APlayerClass* Char = Cast<APlayerClass>(InSkillContext.EntityOwner);
+	
+	FVector Start = Char->GetCameraComponent()->GetComponentLocation();
+	FVector End = Start + (InSkillContext.StartLocation - Start) * MaxRange;
+	
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(Char);
+	
+	return LineTraceAroundLocation(Start, End, CollisionParams, InValidSurfaces);
+}
+
+TArray<FHitResult> UExecutionThornFeature::LineTraceAroundLocation(FVector StartLocation, FVector EndLocation,
+                                                          FCollisionQueryParams CollisionParams,
+                                                          TArray<ESurfaceType>& ValidSurfaces)
+{
+	FVector Forward = (EndLocation - StartLocation).GetSafeNormal();
+    
+	// Calcula os eixos relativos à direção do tiro
+	// O vetor 'Right' é sempre perpendicular ao Forward e ao Z Global
+	FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
+    
+	// O vetor 'Up' é perpendicular ao Forward e ao Right (ajusta para inclinações da câmera)
+	FVector Up = FVector::CrossProduct(Forward, Right).GetSafeNormal();
+	
+	FVector RightUp = (Right + Up).GetSafeNormal();
+	
+	TArray<FVector> Offsets;
+	
+	TArray<FVector> Vectors = {Right, Up, RightUp}
+	;
+	for (int i = 0; i < MaxThornsAmount-1; i++)
+	{
+		float SpacingBetweenThorns = FMath::RandRange(12.0f, MaxSpacingBetweenThorns);
+		
+		switch (FMath::RandRange(0,1))
+		{
+			case 0:
+				Offsets.Add(Vectors[FMath::RandRange(0, 2)] * -SpacingBetweenThorns);
+				break;
+			case 1:
+				Offsets.Add(Vectors[FMath::RandRange(0, 2)] * SpacingBetweenThorns);
+				break;
+			default:
+				break;
+		}
+	}
+	
+
+	TArray<FHitResult> ExternTraces;
+	
+	// Executa as traces ao redor
+	for (const FVector& Offset : Offsets)
+	{
+		FVector NewStart = StartLocation + Offset;
+		FVector NewEnd = EndLocation + Offset;
+
+		FHitResult Hit;
+		GetWorld()->LineTraceSingleByChannel(Hit, NewStart, NewEnd, ECC_Visibility, CollisionParams);
+		DrawDebugLine(GetWorld(), NewStart, NewEnd, FColor::Red, false, 5.0f);
+		
+		if (Hit.bBlockingHit)
+			ExternTraces.Add(Hit);
+	}
+
+	// Trace central original
+	FHitResult CentralHit;
+	GetWorld()->LineTraceSingleByChannel(CentralHit, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
+	DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Green, false, 5.0f);
+	
+	TArray<FHitResult> OutValidHits;
+	OutValidHits.Add(CentralHit);
+	
+	for (FHitResult ExternHit : ExternTraces)
+	{
+		float DistanceOfCentralHit = FVector::Dist(CentralHit.ImpactPoint, ExternHit.ImpactPoint);
+		if (DistanceOfCentralHit < 200.0f)
+		{
+			OutValidHits.Add(ExternHit);
+		}
+	}
+	
+	return OutValidHits;
 }

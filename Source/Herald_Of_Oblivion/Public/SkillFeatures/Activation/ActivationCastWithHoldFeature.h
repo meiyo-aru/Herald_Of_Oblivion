@@ -27,7 +27,7 @@ public:
 	virtual void StartActivation(FSkillContext& InSkillContext) override;
 	virtual void BeginDestroy() override;
 	virtual void CompleteActivation(FSkillContext& InSkillContext) override;
-	void CleanNiagara();
+	virtual void CleanNiagara() override;
 	
 	// ==================== Cast Properties ====================
 	// Skill castada na mao esquerda ou direita, ou ambas

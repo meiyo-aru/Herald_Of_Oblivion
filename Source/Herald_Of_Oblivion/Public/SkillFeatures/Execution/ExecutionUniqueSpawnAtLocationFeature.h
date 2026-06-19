@@ -27,7 +27,8 @@ public:
 	float Intensity = 0.0f;
 	UPROPERTY(EditAnywhere, Category="Properties")
 	float CollisionRadius = 0.0f;
-
+	
+	virtual void CleanNiagara() override;
 	virtual void Initialize(USkillInstance* Owner) override;
 	virtual void Execute(FSkillContext& InSkillContext) override;
 	void SpawnAtLocation(FSkillContext& InSkillContext);
