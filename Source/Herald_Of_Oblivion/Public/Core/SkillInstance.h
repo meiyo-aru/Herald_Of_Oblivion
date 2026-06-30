@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EntityClass.h"
+#include "Data/SkillDataAsset.h"
 #include "Structs/SkillStructs.h"
 #include "UObject/Object.h"
 #include "SkillInstance.generated.h"
@@ -20,14 +22,12 @@ class UExecutionFeature;
 struct FStreamableHandle;
 class AEntityClass;
 class USkillFeature;
-class ASkillActor;
-class USkillDataAsset;
 struct FSkillContext;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSkillCast, FSkillContext&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSkillReleased, FSkillContext&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSkillActivate, FSkillContext&);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnSkillHit, FSkillContext&, FHitResult* HitResult);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnSkillHit, FSkillContext&);
 
 UCLASS(Blueprintable, BlueprintType)
 class HERALD_OF_OBLIVION_API USkillInstance : public UObject
@@ -41,11 +41,11 @@ public:
 	// Chamado ao lançar a habilidade, faz ela entrar em tempo de recarga de acordo com o CooldownReduce
 	void CastSkill();
 	void GoOnCooldown();
-	void FinishSkill();
 	
 	// Reseta as propriedades para que possa ser guardada na Pool
 	void PrepareForPooling();
 
+	
 	FOnSkillCast OnSkillCastDelegate;
 	FOnSkillReleased OnSkillReleasedDelegate;
 	FOnSkillActivate OnSkillActivateDelegate;
@@ -55,13 +55,13 @@ public:
 private:
 	// Ponteiro para o dono da instância da habilidade
 	UPROPERTY(EditAnywhere, Category="Properties")
-	AEntityClass* Owner;
+	TWeakObjectPtr<AEntityClass> Owner;
 	
 	FTimerHandle TimerHandle;
 	
 	// Ponteiro para o USkillDataAsset da habilidade
-	UPROPERTY(EditAnywhere, Category="Data Asset")
-	USkillDataAsset* DataAsset;
+	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Skill"))
+	FPrimaryAssetId AssetId;
 	
 	// Level da habilidade
 	UPROPERTY(EditAnywhere, Category="Properties")
@@ -89,43 +89,50 @@ private:
 	
 public:
 	// Handles SEPARADOS para controle independente
-	TSharedPtr<FStreamableHandle> AuraHandle;      // AuraVFX (curto)
-	TSharedPtr<FStreamableHandle> CastingHandle;      // CastVFX (curto)
-	TSharedPtr<FStreamableHandle> EndingHandle;   // Execution (médio)
+	TSharedPtr<FStreamableHandle> EntityOwnerAuraHandle;      // Aura
+	TSharedPtr<FStreamableHandle> WeaponAuraHandle;      // Aura
+	TSharedPtr<FStreamableHandle> ActivationHandle;      // Activation e execution
+	/*
+	TSharedPtr<FStreamableHandle> OnHitHandle;   // OnHit
+	*/
 	
 	// Features da skill
-	UPROPERTY(EditAnywhere, Instanced, Category = "Design")
+	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
 	UExecutionFeature* ExecutionFeature;
-	UPROPERTY(EditAnywhere, Instanced, Category = "Design")
+	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
 	UActivationFeature* ActivationFeature;
-	UPROPERTY(EditAnywhere, Instanced, Category = "Design")
-	UOnHitFeature* OnHitFeature;
+	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	TArray<UOnHitFeature*> OnHitFeature;
 	
 	UPROPERTY(VisibleAnywhere, Category="Properties")
 	FSkillContext CurrentContext;
 
 	// Método para inicializar a instancia de skill
-	virtual void Initialize(AEntityClass* InOwner, USkillDataAsset* InDataAsset, UActivationFeature* InActivationFeature, UExecutionFeature*
-	                        InExecutionFeature, UOnHitFeature* InOnHitFeature);
+	virtual void Initialize(AEntityClass* InOwner, FPrimaryAssetId InAssetId, UActivationFeature* InActivationFeature, UExecutionFeature*
+	                        InExecutionFeature, TArray<UOnHitFeature*> InOnHitFeature);
 	
 	// Método para inicializar as features
 	virtual void InitializeFeatures();
 	
 	// Retorna o DataAsset
-	const USkillDataAsset* GetDataAsset() const {return this->DataAsset;};
+	FPrimaryAssetId GetAssetId() const {return AssetId;}
 	
 	// Retorna a entidade dona da instancia de skill
-	const AEntityClass* GetOwner() const {return this->Owner;};
+	const AEntityClass* GetOwner() const
+	{
+		if (AEntityClass* EntOwner = Owner.Get())
+			return EntOwner;
+		else return nullptr;
+	};
 	
 	const bool GetInCooldown() const {return this->bInCooldown;};
 	const bool GetIsCasting() const {return this->bIsCasting;};
 	const void FinishCast() {this->bIsCasting = false;};
 	
-	void ReleaseCastingHandle();
-	void ReleaseEndingHandle();
+	void ReleaseActivationHandle();
 	void ReleaseAuraHandle();
 	
 	UActivationFeature* GetActivationFeature() const {return this->ActivationFeature;};
 	UExecutionFeature* GetExecutionFeature() const {return this->ExecutionFeature;};
-	UOnHitFeature* GetOnHitFeature() const {return this->OnHitFeature;};
+	TArray<UOnHitFeature*> GetOnHitFeature() const {return this->OnHitFeature;};
 };

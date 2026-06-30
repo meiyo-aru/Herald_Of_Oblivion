@@ -14,7 +14,27 @@ struct FEntitySlaughterAchievementsStruct
 	UPROPERTY(EditAnywhere)
 	float AchievementsModifier = 0.0f;
 	FEntitySlaughterAchievementsStruct() = default;
-	void UpdateModifierToDefault()
+	explicit FEntitySlaughterAchievementsStruct(EEntitySlaughterAchievementsEnum InAchievements)
+	{
+		Achievements = InAchievements;
+		switch (this->Achievements)
+		{
+		case EEntitySlaughterAchievementsEnum::NoDamage:
+			this->AchievementsModifier = 2.0f;
+			break;
+		case EEntitySlaughterAchievementsEnum::FastKill:
+			this->AchievementsModifier = 1.5f;
+			break;
+		case EEntitySlaughterAchievementsEnum::NumericalDisadvantage:
+			this->AchievementsModifier = 3.0f;
+			break;
+		default:
+			this->AchievementsModifier = 0.0f;
+			break;
+		}
+	}
+	
+	void UpdateModifier()
 	{
 		switch (this->Achievements)
 		{
@@ -45,12 +65,11 @@ struct FEntityRarityStruct
 	
 	UPROPERTY(EditAnywhere)
 	float RarityModifier = 0.0f;
-	
 	FEntityRarityStruct() = default;
-	
-	void UpdateModifierToDefault()
+	explicit FEntityRarityStruct(EEntityRarityEnum InRarity)
 	{
-		switch (this->Rarity)
+		Rarity = InRarity;
+		switch (Rarity)
 		{
 		case EEntityRarityEnum::Minion:
 			this->RarityModifier = 1.0f;
@@ -75,6 +94,33 @@ struct FEntityRarityStruct
 			break;
 		}
 	}
+	void UpdateModifier()
+	{
+		switch (Rarity)
+		{
+		case EEntityRarityEnum::Minion:
+			this->RarityModifier = 1.0f;
+			break;
+		case EEntityRarityEnum::Common:
+			this->RarityModifier = 1.05f;
+			break;
+		case EEntityRarityEnum::Rare:
+			this->RarityModifier = 1.2f;
+			break;
+		case EEntityRarityEnum::Unique:
+			this->RarityModifier = 1.5f;
+			break;
+		case EEntityRarityEnum::MiniBoss:
+			this->RarityModifier = 2.0f;
+			break;
+		case EEntityRarityEnum::Boss:
+			this->RarityModifier = 3.5f;
+			break;
+		default:
+			this->RarityModifier = 0.0f;
+			break;
+		}	}
+
 };
 
 

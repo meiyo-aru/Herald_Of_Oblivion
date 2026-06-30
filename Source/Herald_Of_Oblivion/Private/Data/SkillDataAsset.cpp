@@ -5,7 +5,7 @@
 
 #include "Core/EntityClass.h"
 #include "Core/SkillInstance.h"
-#include "Core/SpecializationDataAsset.h"
+#include "Data/SpecializationDataAsset.h"
 #include "SkillFeatures/Activation/ActivationFeature.h" 
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "SkillFeatures/OnHit/OnHitFeature.h"
@@ -20,11 +20,28 @@ USkillInstance* USkillDataAsset::CreateInstance(AEntityClass* Owner)
 	// Define uma entidade como o Outer e cria o objeto
 	USkillInstance* Instance =  NewObject<USkillInstance>(Owner);
 	
+	// Novo array que vai receber as cópias
+	TArray<UOnHitFeature*> DuplicatedArray;
+	
+	for (UOnHitFeature* SourceObj : this->OnHitFeature)
+	{
+		if (SourceObj)
+		{
+			// Duplica o objeto individualmente
+			UOnHitFeature* NewObj = DuplicateObject<UOnHitFeature>(SourceObj, Instance);
+        
+			if (NewObj)
+			{
+				DuplicatedArray.Add(NewObj);
+			}
+		}
+	}
+	
 	Instance->Initialize(Owner,
-		this,
-		DuplicateObject<UActivationFeature>(this->ActivationFeature, Instance), 
-		DuplicateObject<UExecutionFeature>(this->ExecutionFeature, Instance),
-		DuplicateObject<UOnHitFeature>(this->OnHitFeature, Instance));
+	                     GetPrimaryAssetId(),
+	                     DuplicateObject<UActivationFeature>(this->ActivationFeature, Instance), 
+	                     DuplicateObject<UExecutionFeature>(this->ExecutionFeature, Instance),
+	                     DuplicatedArray);
 	return Instance;
 }
 

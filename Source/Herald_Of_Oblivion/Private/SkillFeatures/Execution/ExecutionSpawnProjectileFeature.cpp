@@ -7,7 +7,11 @@
 #include "Core/SkillActor.h"
 #include "Data/SkillDataAsset.h"
 #include "NiagaraComponent.h"
+#include "Character/PlayerClass.h"
+#include "Components/SphereComponent.h"
+#include "Core/EquipmentActor.h"
 #include "Core/SkillInstance.h"
+#include "Engine/AssetManager.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
 
@@ -20,10 +24,7 @@ void UExecutionSpawnProjectileFeature::Execute(FSkillContext& InSkillContext)
 {
 	Super::Execute(InSkillContext);
 	
-	UE_LOG(LogTemp, Warning, TEXT("Execute"));
 	if (!InSkillContext.bActivated) return;
-
-	if (InSkillContext.EndLocation.IsZero()) return;
 	
 	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
 	if (!SkillInstance)
@@ -32,8 +33,7 @@ void UExecutionSpawnProjectileFeature::Execute(FSkillContext& InSkillContext)
 		return;
 	}
 	
-	this->SpawnProjectile(InSkillContext, FName("RightHandSocket"));
-	SkillInstance->FinishSkill();
+	this->SpawnProjectile(InSkillContext, FName("RightWeaponSocket"));
 	SkillInstance->GoOnCooldown();
 }
 
@@ -47,7 +47,15 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		return;
 	}
 	
-	const USkillDataAsset* SkillDataAsset = SkillInstance->GetDataAsset();
+	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
+	if (!AssetManager)
+	{
+		UE_LOG(LogTemp, Error, TEXT("USkillInstance::CastSkill - AssetManager invalido."));
+		return;
+	}
+
+	const USkillDataAsset* SkillDataAsset = AssetManager->Get().GetPrimaryAssetObject<USkillDataAsset>(SkillInstance->GetAssetId());
+		
 	if (!SkillDataAsset)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionSpawnProjectileFeature::SpawnProjectile - SkillDataAsset invalido."));
@@ -64,7 +72,18 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	FVector StartLocation;
 	if (this->bThrowByTheHands)
 	{
-		StartLocation = EntityOwner->GetMesh()->GetSocketLocation(ShootingSocketName);
+		if (bThrowByTheRightHand)
+		{
+			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("CastSocket");
+			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("RightWeaponSocket");
+			
+		} else
+		{
+			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("CastSocket");
+			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("LeftWeaponSocket");
+		}
 	}
 	else
 	{
@@ -72,7 +91,7 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		StartLocation.Z += 5;
 	}
 	
-	FVector TargetLocation = InSkillContext.EndLocation;
+
 	
 	/*
 	if (bParallelToTheTerrain)
@@ -109,6 +128,15 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	{
 	}*/
 	
+	FVector TargetLocation;
+	if (InSkillContext.EndLocation.IsZero())
+	{
+		if (APlayerClass* Char = Cast<APlayerClass>(EntityOwner))
+		{
+			TargetLocation = StartLocation + Char->GetCameraComponent()->GetForwardVector() * MaximumRange;
+		}
+	} else TargetLocation = InSkillContext.EndLocation;
+	
 	// Atualiza a direção do contexto para a nova direção calculada
 	InSkillContext.Direction = (TargetLocation - StartLocation).GetSafeNormal();
 	
@@ -124,7 +152,33 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	}
 
 	SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
-
+	
+	if (bHaveCollisionComponent)
+		SkillActor->ConfigureCollisionComponent(this, EntityOwner);
+	
+	SkillActor->ProjectileMovementComponent->SetUpdatedComponent(SkillActor->CollisionComponent);
+	SkillActor->BindCollisionDelegatesFromExecutionFeature(this);
+		
+	// Se tiver componente de Niagara, configura-o
+	if (SkillActor->NiagaraComponent)
+	{
+		SkillActor->NiagaraComponent->SetAutoDestroy(true); 
+		SkillActor->NiagaraComponent->SetComponentTickEnabled(true);
+		SkillActor->NiagaraComponent->Activate();
+		
+		SkillActor->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
+		// Seta o objeto callback
+		SkillActor->NiagaraComponent->SetVariableObject(FName("CallbackObject"), SkillActor);
+			
+		UNiagaraSystem* VFX = ExecutionEffect.Get();
+		if (!IsValid(VFX))
+		{
+			UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(this));
+			return;
+		}
+		SkillActor->NiagaraComponent->SetAsset(VFX);
+	}
+	
 	// Timer de vida máxima (fallback)
 	if (this->LifeSpan > 0.0f)
 	{
@@ -152,26 +206,7 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	}
 	
 	if (IsValid(SkillActor->NiagaraComponent))
-	{
-		if (!SkillActor->NiagaraComponent->OnSystemFinished.IsAlreadyBound(this, &UExecutionSpawnProjectileFeature::OnNiagaraSystemFinished))
-		{
-			SkillActor->NiagaraComponent->OnSystemFinished.AddDynamic(this, &UExecutionSpawnProjectileFeature::OnNiagaraSystemFinished);
-		}
 		SkillActor->NiagaraComponent->Activate();
-	}
-}
-
-void UExecutionSpawnProjectileFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnNiagaraSystemFinished(FinishedComponent);
-	AActor* Actor = FinishedComponent->GetOwner();
-	if (IsValid(Actor))
-		Actor->Destroy();
-}
-
-void UExecutionSpawnProjectileFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
 }
 
 void UExecutionSpawnProjectileFeature::ProccessParticles(const TArray<FBasicParticleData>& Data, FSkillContext& SkillContext)
@@ -186,6 +221,7 @@ void UExecutionSpawnProjectileFeature::ProccessParticles(const TArray<FBasicPart
 	
 	if (!IsValid(SkillActor) || !IsValid(EntityOwner)) return;
 		
+	UE_LOG(LogTemp, Warning, TEXT("UExecutionSpawnProjectileFeature::ProccessParticles     ssssssssssss"));
 	TArray<FOverlapResult> OutOverlaps = MakeHitSphere(this->RadiusCollision, SkillContext, Data[0].Position);
 
 	if (OutOverlaps.Num() == 0) return;

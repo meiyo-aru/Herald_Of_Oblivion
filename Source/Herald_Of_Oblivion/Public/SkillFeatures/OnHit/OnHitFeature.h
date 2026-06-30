@@ -20,10 +20,8 @@ public:
 	virtual void Initialize(USkillInstance* Owner) override;
 	
 	// Realiza operações essenciais e comuns às classes filhas
-	virtual void Execute(FSkillContext& InSkillContext, FVector TargetLocation);
+	virtual void Execute(FSkillContext& InSkillContext);
 
-	// virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
-	// virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
 	
 	// Executa alguma lógica nas particulas do niagara
 	// virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext);

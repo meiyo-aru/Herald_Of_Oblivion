@@ -33,9 +33,7 @@ public:
 	// Realiza operações essenciais e comuns às classes filhas
 	virtual void Execute(FSkillContext& InSkillContext);
 
-	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
-	virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
-	virtual void CleanNiagara() override;
+	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents) override;
 
 	// Executa alguma lógica nas particulas do niagara
 	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext);

@@ -28,12 +28,13 @@ public:
 	UPROPERTY(EditAnywhere, Category="Properties")
 	float CollisionRadius = 0.0f;
 	
-	virtual void CleanNiagara() override;
+	UPROPERTY(EditAnywhere, Category="Properties")
+	bool bSpawnOnEndLocation = true;
+
+	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents) override;
 	virtual void Initialize(USkillInstance* Owner) override;
 	virtual void Execute(FSkillContext& InSkillContext) override;
 	void SpawnAtLocation(FSkillContext& InSkillContext);
-	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
-	virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
 	// Executa alguma lógica nas particulas do niagara
 	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
 };

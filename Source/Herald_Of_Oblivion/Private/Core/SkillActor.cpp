@@ -11,6 +11,7 @@
 #include "NiagaraDataInterfaceExport.h"
 #include "Components/SphereComponent.h"
 #include "Core/EntityClass.h"
+#include "Core/EquipmentActor.h"
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "SkillFeatures/Execution/ExecutionSpawnProjectileFeature.h"
@@ -23,6 +24,7 @@ ASkillActor::ASkillActor()
 	PrimaryActorTick.bCanEverTick = true;
 
 	this->CollisionComponent = CreateDefaultSubobject<USphereComponent>(FName("Collision Component"));
+	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SetRootComponent(this->CollisionComponent);
 
 	// Criar o movimento já no construtor
@@ -112,18 +114,26 @@ void ASkillActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void ASkillActor::BeginDestroy()
 {
-	if (this->NiagaraComponent)
+	if (IsValid(this->NiagaraComponent))
 	{
 		this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), nullptr);
 		this->NiagaraComponent->Deactivate();
 	}
-	
 	Super::BeginDestroy();
+	
 }
 // Called every frame
 void ASkillActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+void ASkillActor::OnNiagaraSystemFinished(UNiagaraComponent* NC)
+{
+	UE_LOG(LogTemp,Warning, TEXT("AOOOOOOBA!"));
+	
+	Destroy();
+	UE_LOG(LogTemp,Warning, TEXT("Skill Actor Destroyed!"));
 }
 
 void ASkillActor::Initialize(USkillInstance* InInstance, AEntityClass* InEntity, FSkillContext& InSkillContext)
@@ -142,69 +152,19 @@ void ASkillActor::Initialize(USkillInstance* InInstance, AEntityClass* InEntity,
 
 	this->Instance = InInstance;
 	this->OwnerEntity = InEntity;
-	const USkillDataAsset* SkillData = InInstance->GetDataAsset();
-	if (!SkillData)
-	{
-		UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - SkillDataAsset invalido para SkillInstance '%s'."), *GetNameSafe(InInstance));
-		return;
-	}
 
-	const UExecutionSpawnProjectileFeature* ProjectileFeature = Cast<UExecutionSpawnProjectileFeature>(InInstance->GetExecutionFeature());
-	
-	
-	// Verifica se existe feature de projetil e configura os parametros dela
-	if (IsValid(ProjectileFeature))
+	// Se tiver componente de Niagara, configura-o
+	if (this->NiagaraComponent)
 	{
-		if (InEntity)
-		{
-			this->CollisionComponent->IgnoreActorWhenMoving(InEntity, true);
-			this->CollisionComponent->MoveIgnoreActors.Add(InEntity);
-		}
-	
-		this->CollisionComponent->SetGenerateOverlapEvents(ProjectileFeature->bGenerateOverlapEvents);
-		this->CollisionComponent->SetNotifyRigidBodyCollision(ProjectileFeature->bNotifyRigidBodyCollision);
-		this->CollisionComponent->SetCollisionEnabled(ProjectileFeature->CollisionEnabled);
-		this->CollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-		this->CollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, ProjectileFeature->PawnCollision);
-		this->CollisionComponent->SetCollisionResponseToChannel(ECC_WorldStatic, ProjectileFeature->WorldStaticCollision);
-		this->CollisionComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ProjectileFeature->WorldDynamicCollision);
-		this->CollisionComponent->SetSphereRadius(ProjectileFeature->RadiusCollision);
-	
-		this->ProjectileMovementComponent->SetUpdatedComponent(this->CollisionComponent);
-		this->BindCollisionDelegatesFromExecutionFeature(ProjectileFeature);
+		this->NiagaraComponent->OnSystemFinished.AddDynamic(this, &ASkillActor::OnNiagaraSystemFinished);
+		this->NiagaraComponent->SetAutoDestroy(true);
+		this->NiagaraComponent->SetComponentTickEnabled(true);
+		this->NiagaraComponent->Activate();
 		
-		// Se tiver componente de Niagara, configura-o
-		if (this->NiagaraComponent)
-		{
-			this->NiagaraComponent->SetAutoDestroy(false); // Nós controlamos, não o componente
-			this->NiagaraComponent->SetComponentTickEnabled(true);
-			this->NiagaraComponent->Activate();
-		
-			this->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
-			// Seta o objeto callback
-			this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
-			
-			UNiagaraSystem* VFX = ProjectileFeature->PathEffect.Get();
-			if (!IsValid(VFX))
-			{
-				UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX PathEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(ProjectileFeature));
-				return;
-			}
-			this->NiagaraComponent->SetAsset(VFX);
-		}
-	} else
-	{
-		// Se tiver componente de Niagara, configura-o
-		if (this->NiagaraComponent)
-		{
-			this->NiagaraComponent->SetAutoDestroy(true);
-			this->NiagaraComponent->SetComponentTickEnabled(true);
-			this->NiagaraComponent->Activate();
-		
-			// Seta o objeto callback
-			this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
-		}
+		// Seta o objeto callback
+		this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
 	}
+	
 }
 
 void ASkillActor::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
@@ -219,13 +179,11 @@ void ASkillActor::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor,
 	
 	if (IsValid(this->NiagaraComponent))
 	{
-		this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), nullptr);
 		this->NiagaraComponent->Deactivate();
 	}
-	
 	this->SkillContext.HitOverlapResultType = EHitOverlapResultType::Hit;
 	this->SkillContext.HitResult = Hit;
-	SkillInstance->OnHitSurface.Broadcast(this->SkillContext, Hit.ImpactPoint);
+	SkillInstance->OnSkillHitDelegate.Broadcast(this->SkillContext);
 }
 
 void ASkillActor::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
@@ -233,3 +191,23 @@ void ASkillActor::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 	bool bFromSweep, const FHitResult& SweepResult)
 {
 };
+
+void ASkillActor::ConfigureCollisionComponent(USkillFeature* SkillFeature, AEntityClass* EntityOwner)
+{
+	CollisionComponent->IgnoreActorWhenMoving(EntityOwner, true);
+	CollisionComponent->MoveIgnoreActors.Add(EntityOwner);
+	
+	if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+		CollisionComponent->MoveIgnoreActors.Add(Actor);
+	if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+		CollisionComponent->MoveIgnoreActors.Add(Actor);
+	
+	CollisionComponent->SetGenerateOverlapEvents(SkillFeature->bGenerateOverlapEvents);
+	CollisionComponent->SetNotifyRigidBodyCollision(SkillFeature->bNotifyRigidBodyCollision);
+	CollisionComponent->SetCollisionEnabled(SkillFeature->CollisionEnabled);
+	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+	CollisionComponent->SetCollisionResponseToChannel(ECC_Pawn, SkillFeature->PawnCollision);
+	CollisionComponent->SetCollisionResponseToChannel(ECC_WorldStatic, SkillFeature->WorldStaticCollision);
+	CollisionComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, SkillFeature->WorldDynamicCollision);
+	CollisionComponent->SetSphereRadius(SkillFeature->RadiusCollision);
+}

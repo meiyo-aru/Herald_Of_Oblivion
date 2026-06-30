@@ -23,19 +23,29 @@ class HERALD_OF_OBLIVION_API UActivationFeature : public USkillFeature
 public:
 	FTimerHandle TimerHandle;
 	
+	// Controla o raio da mira, quanto menor, mais preciso
+	UPROPERTY(EditAnywhere, Category="Aim")
+	float AimRadius = 5.0f;
+	
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 
-	// Limpa os handles utilizados
-	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
-	virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
 	FHitResult GetAimTarget(FSkillContext& InContext, float Sensibility) const;
 	FHitResult GetCursorLocation(FSkillContext& InContext) const;
 	
-	virtual void CleanNiagara() override;
+	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents) override;
 
 	// Lógica de ativação inicial e final
 	virtual void StartActivation(FSkillContext& InSkillContext);	
 	virtual void CompleteActivation(FSkillContext& InSkillContext);	
+	
+	// Efeito de Ativação
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "ActivationVFX"))
+	TSoftObjectPtr<UNiagaraSystem> ActivationEffect;
+
+	// Som de Ativação
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "ActivationSFX"))
+	TSoftObjectPtr<USoundCue> ActivationSound;
+
 };
 

@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "NiagaraDataInterfaceExport.h"
 #include "NiagaraSystem.h"
+#include "SkillFeatures/SkillFeature.h"
 #include "SkillActor.generated.h"
 
 /**
@@ -48,10 +49,13 @@ public:
 	void OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, 
 	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, 
 	bool bFromSweep, const FHitResult& SweepResult);
+	void ConfigureCollisionComponent(USkillFeature* SkillFeature, AEntityClass* EntityOwner);
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-	
+	UFUNCTION()
+	void OnNiagaraSystemFinished(UNiagaraComponent* NC);
+
 	void Initialize(USkillInstance* InInstance, AEntityClass* InEntity, FSkillContext& InSkillContext);
 	
 	FSkillContext SkillContext;
@@ -94,7 +98,6 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	UProjectileMovementComponent* ProjectileMovementComponent = nullptr;
 
-private:
 	void BindCollisionDelegatesFromExecutionFeature(const UExecutionFeature* ExecutionFeature);
 	bool bCollisionDelegatesBound = false;
 };

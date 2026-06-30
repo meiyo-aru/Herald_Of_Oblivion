@@ -3,28 +3,23 @@
 
 #include "Core/EntityClass.h"
 
+#include "Character/PlayerClass.h"
 #include "Components/CapsuleComponent.h"
-#include "Core/SpecializationDataAsset.h"
+#include "Core/EquipmentInstance.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
+#include "Data/SpecializationDataAsset.h"
+#include "Data/EquipmentDataAsset.h"
 #include "Engine/AssetManager.h"
+#include "SkillFeatures/Activation/ActivationChargeFeature.h"
 #include "Utility/AssetManagerUtility.h"
-
+#include "Structs/EntityStructs.h"
 
 // Sets default values
 AEntityClass::AEntityClass()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true; 
-	
-	this->RightEquippedWeapon = CreateDefaultSubobject<UStaticMeshComponent>(FName("Right Equipped Weapon"));
-	this->RightEquippedWeapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	this->RightEquippedWeapon->SetCastShadow(true);
-	
-	this->LeftEquippedWeapon = CreateDefaultSubobject<UStaticMeshComponent>(FName("Left Equipped Weapon"));
-	this->LeftEquippedWeapon->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	this->LeftEquippedWeapon->SetCastShadow(true);
-	
 	this->GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Block);
 }
 
@@ -35,24 +30,50 @@ void AEntityClass::BeginPlay()
 	DefineAttributes();
 	DefineSkills();
 	
-	if (GetMesh() && this->RightEquippedWeapon)
+	if (IsValid(Specialization))
+		SpecializationName = Specialization->GetFName();
+
+	UE_LOG(LogTemp, Warning, TEXT("Specialization: %s"), *SpecializationName.ToString());
+	
+	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
+	if (!AssetManager)
 	{
-		this->RightEquippedWeapon->AttachToComponent(
-			GetMesh(), 
-			FAttachmentTransformRules::SnapToTargetIncludingScale, 
-			FName("RightHandSocket") 
-		);
+		UE_LOG(LogTemp, Error, TEXT("USkillInstance::CastSkill - AssetManager invalido."));
+		return;
 	}
 	
-	if (GetMesh() && this->LeftEquippedWeapon)
-	{
-		this->LeftEquippedWeapon->AttachToComponent(
-			GetMesh(), 
-			FAttachmentTransformRules::SnapToTargetIncludingScale, 
-			FName("LeftHandSocket") 
-		);
-	}
+	// Carrega o Asset dos equipamentos iniciais, pega a instancia e o actor do pool
+	TWeakObjectPtr WeakThis(this);
+	AssetManager->LoadPrimaryAssets(InitialEquipmentsAssets,
+		TArray<FName>({FName("StaticMesh")}),
+		FStreamableDelegate::CreateLambda([WeakThis, AssetManager]
+		{
+			if (AEntityClass* StrongThis = WeakThis.Get())
+			{
+				for (FPrimaryAssetId EquipmentAssetId : StrongThis->InitialEquipmentsAssets)
+				{
+					if (UEquipmentDataAsset* EquipmentDataAsset = AssetManager->GetPrimaryAssetObject<UEquipmentDataAsset>(EquipmentAssetId))
+					{
+						UEquipmentInstance* EquipmentInstance = EquipmentDataAsset->GetInstance(StrongThis, FItemRarityStruct(EItemRarityEnum::Normal), 1, 1);
+						StrongThis->EquippedEquipments.Add(EquipmentDataAsset->EquipmentSlot, EquipmentInstance);
+						
+						// 1. Pegamos o texto puro (FString) do Enum usando a reflexão
+						FString EquipmentSlotString = StaticEnum<EEquipmentSlot>()->GetNameStringByValue((int64)EquipmentDataAsset->EquipmentSlot);
+						FString WeaponTypeString = StaticEnum<EWeaponType>()->GetNameStringByValue((int64)EquipmentDataAsset->WeaponType);
+						
+						AEquipmentActor* Actor = EquipmentInstance->GetEquipmentActorAndAttach(FName(*(EquipmentSlotString + WeaponTypeString)));
+						if (UStaticMesh* Mesh = EquipmentDataAsset->StaticMesh.Get())
+						{
+							Actor->StaticMeshComponent->SetStaticMesh(Mesh);
+						}
+					}
+				}
+			}
+		})
+	);
 }
+
+
 
 // Called every frame
 void AEntityClass::Tick(float DeltaTime)
@@ -80,7 +101,7 @@ void AEntityClass::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 	if (MemberPropertyName == GET_MEMBER_NAME_CHECKED(AEntityClass, Rarity) &&
 		PropertyName == GET_MEMBER_NAME_CHECKED(FEntityRarityStruct, Rarity))
 	{
-		Rarity.UpdateModifierToDefault();
+		Rarity.UpdateModifier();
 		return; // Retorne para evitar verificações desnecessárias
 	}
 	
@@ -91,7 +112,7 @@ void AEntityClass::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 		const int32 ChangedIndex = e.GetArrayIndex(e.PropertyChain.GetActiveMemberNode()->GetValue()->GetName());
 		if (SlaughterAchievements.IsValidIndex(ChangedIndex))
 		{
-			SlaughterAchievements[ChangedIndex].UpdateModifierToDefault();
+			SlaughterAchievements[ChangedIndex].UpdateModifier();
 		}
 	}
 	
@@ -114,48 +135,35 @@ void AEntityClass::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 // Define as skills iniciais da entidade
 void AEntityClass::DefineSkills()
 {
-	// Se a entidade é nível 1, significa que sempre vai ter o mesmo conjunto de habilidades, dependendo da especializacao.
-	// se nao for nivel 1 entao o método é sobrescrito pela subclasse e tem lógica exclusiva 
-	if (this->Level == 1)
-	{
-		// Pega os AssetsId baseado na Especializacao, raridade e nível do jogador
-		TArray<FPrimaryAssetId> AssetsId = UAssetManagerUtility::GetInitialSkillsBySpecialization(this->SpecializationName);
-
-		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
-		if (!AssetManager)
-		{
-			UE_LOG(LogTemp, Error, TEXT("AEntityClass::DefineSkills - AssetManager invalido."));
-			return;
-		}
-		
-		// Criamos o delegate. 
-		// O parâmetro extra (SkillIds) é passado para que a função de callback saiba o que foi carregado.
-		FStreamableDelegate Delegate = FStreamableDelegate::CreateUObject(this, &AEntityClass::OnAllSkillsLoaded, AssetsId);
-
-		// Inicia o carregamento em massa
-		AssetManager->LoadPrimaryAssets(AssetsId, TArray<FName>(), Delegate);
-	}
-}
-
-
-
-void AEntityClass::OnAllSkillsLoaded(TArray<FPrimaryAssetId> LoadedIds)
-{
+	
 	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
 	if (!AssetManager)
 	{
-		UE_LOG(LogTemp, Error, TEXT("AEntityClass::OnAllSkillsLoaded - AssetManager invalido."));
+		UE_LOG(LogTemp, Error, TEXT("AEntityClass::DefineSkills - AssetManager invalido."));
 		return;
 	}
 	
-	for (const FPrimaryAssetId& Id : LoadedIds)
+	TWeakObjectPtr WeakThis(this);
+	
+	// Inicia o carregamento em massa
+	AssetManager->LoadPrimaryAssets(InitialSkillsAssets, TArray<FName>(), FStreamableDelegate::CreateLambda([WeakThis, AssetManager]
 	{
-		// GetPrimaryAssetObject busca exatamente esse ID específico
-		if (USkillDataAsset* SkillData = Cast<USkillDataAsset>(AssetManager->GetPrimaryAssetObject(Id)))
+		if (AEntityClass* StrongThis = WeakThis.Get())
 		{
-			this->SkillsInstances.Add(SkillData->CreateInstance(this));
+			for (FPrimaryAssetId& AssetId : StrongThis->InitialSkillsAssets)
+			{
+				if (USkillDataAsset* AssetLoaded = AssetManager->GetPrimaryAssetObject<USkillDataAsset>(AssetId))
+				{
+					USkillInstance* SkillInstance = AssetLoaded->CreateInstance(StrongThis);
+					StrongThis->InitializeSkills(SkillInstance);
+					StrongThis->SkillsInstances.Add(SkillInstance);
+					StrongThis->LoadActivationSkillAssets(SkillInstance);
+					if (APlayerClass* Char = Cast<APlayerClass>(StrongThis))
+						Char->EquippedSkillsInstances.Add(SkillInstance);
+				}
+			}
 		}
-	}
+	}));
 }
 
 // Define os atributos padrão para todas as criaturas, é sobrescrito pelo método da classe filha
@@ -253,6 +261,20 @@ void AEntityClass::DefineAttributes()
 	this->TrueAttributes.Emplace(EEntityTrueAttributeEnum::AbilitySpeed, FAttribute(1.0f, EAttributeTypeEnum::TrueAttribute, EEntityTrueAttributeEnum::AbilitySpeed));
 }
 
+AEquipmentActor* AEntityClass::GetEquipmentActor(EEquipmentSlot Slot)
+{
+	TObjectPtr<UEquipmentInstance> Instance;
+	if (TObjectPtr<UEquipmentInstance>* FoundPtr = EquippedEquipments.Find(Slot))
+	{
+		if (FoundPtr)
+		{
+			Instance = *FoundPtr;
+			return IsValid(Instance->EquipmentActor) ? Instance->EquipmentActor : nullptr;
+		}
+	}
+	return nullptr;
+}
+
 // Calcula o Retorno de XP ao abater a entidade
 float AEntityClass::CalculateXPReturn(AEntityClass* Killer)
 {
@@ -318,4 +340,63 @@ void AEntityClass::InitializeSkills(TArray<USkillInstance*> SkillInstances)
 void AEntityClass::InitializeSkills(USkillInstance* SkillInstance)
 {
 	SkillInstance->InitializeFeatures();
+}
+
+
+void AEntityClass::LoadActivationSkillAssets(USkillInstance* SkillInstance)
+{
+	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
+	if (!AssetManager)
+	{
+		UE_LOG(LogTemp, Error, TEXT("APlayerClass::LoadSkillAssets - AssetManager invalido."));
+		return;
+	}
+	
+	TArray<FName> ActivationBundles = {
+		FName("ActivationVFX"), FName("ActivationSFX")
+	};
+	
+	if (!SkillInstance->ActivationHandle || !SkillInstance->ActivationHandle.IsValid())
+	{
+		SkillInstance->ActivationHandle = AssetManager->LoadPrimaryAsset(
+			SkillInstance->GetAssetId(),
+			ActivationBundles,
+			FStreamableDelegate::CreateLambda([]()
+			{
+				UE_LOG(LogTemp, Log, TEXT("Activation Asset carregado"));	
+			})
+		);
+	}
+	
+	TArray<FName> AuraBundles;
+	
+	if (UActivationChargeFeature* CastWithHoldFeature = Cast<UActivationChargeFeature>(SkillInstance->ActivationFeature))
+	{
+		if (CastWithHoldFeature->bAuraInEntityOwner)
+		{
+			if (!SkillInstance->EntityOwnerAuraHandle || !SkillInstance->EntityOwnerAuraHandle.IsValid())
+			{
+				AuraBundles.Add(FName("EntityOwnerAuraVFX"));
+			}
+		}
+		
+		if (CastWithHoldFeature->bAuraInWeapon)
+		{
+			if (!SkillInstance->WeaponAuraHandle || !SkillInstance->WeaponAuraHandle.IsValid())
+			{
+				AuraBundles.Add(FName("WeaponAuraVFX"));
+			}
+		}
+	}
+	
+
+
+	SkillInstance->EntityOwnerAuraHandle = AssetManager->LoadPrimaryAsset(
+		SkillInstance->GetAssetId(),
+		AuraBundles,
+		FStreamableDelegate::CreateLambda([]()
+		{
+			UE_LOG(LogTemp, Log, TEXT("Aura Assets carregados"));	
+		})
+	);
 }

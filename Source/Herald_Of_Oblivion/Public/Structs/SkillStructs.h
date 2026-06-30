@@ -8,6 +8,7 @@
 class USkillInstance;
 class AEntityClass;
 class ASkillActor;
+class UNiagaraComponent;
 
 USTRUCT(BlueprintType)
 struct FResourceCost
@@ -35,8 +36,7 @@ enum class ESkillStage : uint8
 	None UMETA(DisplayName = "None"),
 	Casting UMETA(DisplayName = "Casting"),
 	InExecution UMETA(DisplayName = "InExecution"),
-	Hitted UMETA(DisplayName = "Hitted"),
-	Persistent UMETA(DisplayName = "Persistent")
+	Hitting UMETA(DisplayName = "Hitting"),
 };
 
 USTRUCT(BlueprintType)
@@ -58,7 +58,10 @@ public:
 	
 	UPROPERTY(VisibleAnywhere)
 	TWeakObjectPtr<ASkillActor> SkillActor;
-
+	
+	UPROPERTY(VisibleAnywhere)
+	TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents;
+	
 	// Ponteiro fraco para a entidade que castou a habilidade
 	UPROPERTY(VisibleAnywhere)
 	TWeakObjectPtr<AEntityClass> EntityOwner;

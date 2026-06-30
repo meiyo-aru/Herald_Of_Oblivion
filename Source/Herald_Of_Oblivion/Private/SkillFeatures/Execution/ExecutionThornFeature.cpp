@@ -13,9 +13,9 @@
 #include "Core/SkillInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 
-void UExecutionThornFeature::CleanNiagara()
+void UExecutionThornFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
 {
-	Super::CleanNiagara();
+	Super::CleanNiagara(SpawnedNiagaraComponents);
 }
 
 void UExecutionThornFeature::Initialize(USkillInstance* Owner)
@@ -40,7 +40,6 @@ void UExecutionThornFeature::Execute(FSkillContext& InSkillContext)
 	
 	this->SpawnThorn(InSkillContext);
 	
-	SkillInstance->FinishSkill();
 	SkillInstance->GoOnCooldown();
 }
 
@@ -50,13 +49,6 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 	if (!SkillInstance)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - SkillInstance invalido."));
-		return;
-	}
-	
-	const USkillDataAsset* SkillDataAsset = SkillInstance->GetDataAsset();
-	if (!SkillDataAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - SkillDataAsset invalido."));
 		return;
 	}
 	
@@ -102,7 +94,7 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 	FTransform SpawnTransform(SpawnRotation, SpawnLocation);
 	
 	ASkillActor* SkillActor = SpawnSkillActor(EntityOwner, SpawnTransform);
-	
+	InSkillContext.SkillActor = SkillActor;
 	SkillActor->NiagaraComponent->SetAsset(VFX);
 	SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
 	
@@ -158,30 +150,8 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 		SkillActor->NiagaraComponent->SetFloatParameter(FName("ThornAmount"), FMath::Clamp(InSkillContext.ChargeRatio, 0.3, 1.0) * MaxThornsAmount);
 		UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayQuat(SkillActor->NiagaraComponent, FName(TEXT("User.ThornDirection")), ThornDirections);
 		UNiagaraDataInterfaceArrayFunctionLibrary::SetNiagaraArrayVector(SkillActor->NiagaraComponent, FName(TEXT("User.ThornLocation")), ThornLocations);
-		
-
-		if (!SkillActor->NiagaraComponent->OnSystemFinished.IsAlreadyBound(this, &UExecutionThornFeature::OnNiagaraSystemFinished))
-		{
-			SkillActor->NiagaraComponent->OnSystemFinished.AddDynamic(this, &UExecutionThornFeature::OnNiagaraSystemFinished);
-		}
-		
-
 	}
 }
-
-void UExecutionThornFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnNiagaraSystemFinished(FinishedComponent);
-	AActor* Actor = FinishedComponent->GetOwner();
-	if (IsValid(Actor))
-		Actor->Destroy();
-}
-
-void UExecutionThornFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
-}
-
 
 void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext)
 {
@@ -317,7 +287,6 @@ TArray<FHitResult> UExecutionThornFeature::LineTraceAroundLocation(FVector Start
 
 		FHitResult Hit;
 		GetWorld()->LineTraceSingleByChannel(Hit, NewStart, NewEnd, ECC_Visibility, CollisionParams);
-		DrawDebugLine(GetWorld(), NewStart, NewEnd, FColor::Red, false, 5.0f);
 		
 		if (Hit.bBlockingHit)
 			ExternTraces.Add(Hit);
@@ -326,7 +295,6 @@ TArray<FHitResult> UExecutionThornFeature::LineTraceAroundLocation(FVector Start
 	// Trace central original
 	FHitResult CentralHit;
 	GetWorld()->LineTraceSingleByChannel(CentralHit, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
-	DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::Green, false, 5.0f);
 	
 	TArray<FHitResult> OutValidHits;
 	OutValidHits.Add(CentralHit);
