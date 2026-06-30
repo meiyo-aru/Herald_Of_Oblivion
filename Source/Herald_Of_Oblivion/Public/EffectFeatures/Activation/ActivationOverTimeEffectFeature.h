@@ -7,7 +7,8 @@
 #include "ActivationOverTimeEffectFeature.generated.h"
 
 /**
- * 
+ * UActivationOverTimeEffectFeature
+ * Ativa o efeito a cada x segundos durante y segundos
  */
 UCLASS()
 class HERALD_OF_OBLIVION_API UActivationOverTimeEffectFeature : public UActivationEffectFeature

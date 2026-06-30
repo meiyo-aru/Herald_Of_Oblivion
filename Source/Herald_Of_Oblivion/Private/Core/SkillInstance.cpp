@@ -40,54 +40,27 @@ void USkillInstance::CastSkill()
 		return;
 	}
 
-	TArray<FName> ExecutionBundles = {
+	TArray InitialFXBundles = {
 		FName("ExecutionVFX"), FName("ExecutionSFX"),
-		FName("PersistentVFX"), FName("PersistentSFX")
+		FName("OnHitVFX"), FName("OnHitSFX")
 	};
 	
-	const USkillDataAsset* Data = this->GetDataAsset();
-	
-	if (!Data)
-	{
-		UE_LOG(LogTemp, Error, TEXT("USkillInstance::CastSkill - SkillDataAsset invalido."));
-		return;
-	}
-	
-
-	if (!this->EndingHandle || !this->EndingHandle.IsValid())
-	{
-		this->EndingHandle = AssetManager->LoadPrimaryAsset(
-			Data->GetPrimaryAssetId(),
-			ExecutionBundles,
-			FStreamableDelegate::CreateLambda([Data]
-			{
-				UE_LOG(LogTemp, Log, TEXT("Execution Asset carregado: %s"), *Data->GetName());	
-			})
-		);
-	}	
-	
-
-	this->OnSkillCastDelegate.Broadcast(this->CurrentContext);
-
-	/*
-	if (!this->AuraHandle || !this->AuraHandle.IsValid())
-	{
-		if (Data->ExecutionFeature)
+	TWeakObjectPtr WeakThis(this);
+	AssetManager->LoadPrimaryAsset(
+		GetAssetId(),
+		InitialFXBundles,
+		FStreamableDelegate::CreateLambda([WeakThis]
 		{
-			TArray<FName> AuraBundles;
-			if (Data->ExecutionFeature->bAura)
-				AuraBundles.Add("AuraVFX");
-			
-			this->AuraHandle = AssetManager->LoadPrimaryAsset(
-				Data->GetPrimaryAssetId(),
-				AuraBundles,
-				FStreamableDelegate::CreateLambda([Data]
-				{
-					UE_LOG(LogTemp, Log, TEXT("Aura Assets carregados: %s"), *Data->GetName());	
-				})
-			);
-		}
-	}*/
+			if (USkillInstance* StrongThis = WeakThis.Get())
+			{
+				// Remove qualquer binding fantasma/antigo que perdeu a referência antes de rodar o broadcast
+				StrongThis->OnSkillCastDelegate.RemoveAll(StrongThis); 
+				StrongThis->OnSkillCastDelegate.Broadcast(StrongThis->CurrentContext);
+				UE_LOG(LogTemp, Log, TEXT("Execution e OnHit Assets carregados")); 
+			}
+		})
+	);
+	
 }
 
 void USkillInstance::GoOnCooldown()
@@ -95,38 +68,45 @@ void USkillInstance::GoOnCooldown()
 	// 1. Limpa o timer se ele já estiver rodando (evita bugs de múltiplos disparos)
 	GetWorld()->GetTimerManager().ClearTimer(this->TimerHandle);
 	
-	UE_LOG(LogTemp,Warning, TEXT("GoOnCooldown!!!"));
 	this->bInCooldown = true;
 	this->bIsCasting = false;
+	
+	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
+	if (!AssetManager)
+	{
+		UE_LOG(LogTemp, Error, TEXT("USkillInstance::CastSkill - AssetManager invalido."));
+		return;
+	}
+	
+	// Não precisa carregar pois podemos assumir que o Cast da skill ja carregou o asset na memoria
+	if (USkillDataAsset* DataAsset = AssetManager->GetPrimaryAssetObject<USkillDataAsset>(AssetId))
+	{
+		float CDTime = DataAsset->Cooldown;
+		if (this->CooldownReduce > 0.0f)
+			CDTime *= this->CooldownReduce/100;
 
-	float CDTime = this->DataAsset->Cooldown;
-	if (this->CooldownReduce > 0.0f)
-		CDTime *= this->CooldownReduce/100;
-
-	TWeakObjectPtr<USkillInstance> WeakThis(this);
-		
-	GetWorld()->GetTimerManager().SetTimer(
-		this->TimerHandle, 
-		[WeakThis]() mutable
-		{
-			if (!WeakThis.IsValid())
+		TWeakObjectPtr WeakThis(this);
+			
+		GetWorld()->GetTimerManager().SetTimer(
+			this->TimerHandle, 
+			[WeakThis]() mutable
 			{
-				return;
-			}
+				if (!WeakThis.IsValid())
+				{
+					return;
+				}
 
-			WeakThis->bInCooldown = false;
-		},
-		 CDTime,
-		false
-		);
+				WeakThis->bInCooldown = false;
+			},
+			 CDTime,
+			false
+			);
+	}
 }
-void USkillInstance::FinishSkill()
+
+void USkillInstance::Initialize(AEntityClass* InOwner, FPrimaryAssetId InAssetId, UActivationFeature* InActivationFeature, UExecutionFeature* InExecutionFeature, TArray<UOnHitFeature*> InOnHitFeature)
 {
-	this->ReleaseEndingHandle();
-}
-void USkillInstance::Initialize(AEntityClass* InOwner, USkillDataAsset* InDataAsset, UActivationFeature* InActivationFeature, UExecutionFeature* InExecutionFeature, UOnHitFeature* InOnHitFeature)
-{
-	this->DataAsset = InDataAsset;
+	this->AssetId = InAssetId;
 	this->ActivationFeature = InActivationFeature;
 	this->ExecutionFeature = InExecutionFeature;
 	this->OnHitFeature = InOnHitFeature;
@@ -138,26 +118,29 @@ void USkillInstance::InitializeFeatures()
 {
 	if (!IsValid(this->ActivationFeature))
 	{
-		UE_LOG(LogTemp, Error, TEXT("USkillInstance::InitializeFeatures - ActivationFeature invalida para SkillDataAsset '%s'."), *GetNameSafe(this->DataAsset));
+		UE_LOG(LogTemp, Error, TEXT("USkillInstance::InitializeFeatures - ActivationFeature invalida para SkillDataAsset."));
 		return;
 	}
 
 	if (!IsValid(this->ExecutionFeature))
 	{
-		UE_LOG(LogTemp, Error, TEXT("USkillInstance::InitializeFeatures - ExecutionFeature invalida para SkillDataAsset '%s'."), *GetNameSafe(this->DataAsset));
+		UE_LOG(LogTemp, Error, TEXT("USkillInstance::InitializeFeatures - ExecutionFeature invalida para SkillDataAsset."));
 		return;
 	}
 	
 	this->ActivationFeature->Initialize(this);
 	this->ExecutionFeature->Initialize(this);
 
-	if (IsValid(this->OnHitFeature))
+	if (!this->OnHitFeature.IsEmpty())
 	{
-		this->OnHitFeature->Initialize(this);
+		for (UOnHitFeature* Feature : this->OnHitFeature)
+		{
+			Feature->Initialize(this);
+		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("USkillInstance::InitializeFeatures - OnHitFeature nao configurada para SkillDataAsset '%s'."), *GetNameSafe(this->DataAsset));
+		UE_LOG(LogTemp, Warning, TEXT("USkillInstance::InitializeFeatures - OnHitFeature nao configurada para SkillDataAsset."));
 	}
 }
 
@@ -169,8 +152,10 @@ void USkillInstance::PrepareForPooling()
 	this->OnSkillActivateDelegate.Clear();
 	this->OnSkillHitDelegate.Clear();
 	
-	this->ReleaseCastingHandle();
-	this->ReleaseEndingHandle();
+	this->ReleaseActivationHandle();
+	/*
+	this->ReleaseOnHitHandle();
+	*/
 	
 	// Reseta variaveis
 	this->Owner = nullptr;
@@ -181,33 +166,33 @@ void USkillInstance::PrepareForPooling()
 	this->ForceMultiplier = 1.0f;
 }
 
-void USkillInstance::ReleaseCastingHandle()
+void USkillInstance::ReleaseActivationHandle()
 {
-	if (!CastingHandle || !this->CastingHandle.IsValid()) return; // Early return, nada a fazer
+	if (!ActivationHandle || !this->ActivationHandle.IsValid()) return; // Early return, nada a fazer
 
 	UE_LOG(LogTemp, Log, TEXT("Casting Assets Liberados da memória"))
 	
-	this->CastingHandle->ReleaseHandle();
-	this->CastingHandle.Reset(); 
+	this->ActivationHandle->ReleaseHandle();
+	this->ActivationHandle.Reset(); 
 }
 
-void USkillInstance::ReleaseEndingHandle()
+/*void USkillInstance::ReleaseOnHitHandle()
 {
-	if (!EndingHandle || !this->EndingHandle.IsValid()) return; // Early return, nada a fazer
+	if (!OnHitHandle || !this->OnHitHandle.IsValid()) return; // Early return, nada a fazer
 	
 	UE_LOG(LogTemp, Log, TEXT("Ending Assets Liberados da memória"))
 	
-	this->EndingHandle->ReleaseHandle();
-	this->EndingHandle.Reset(); 
-}
+	this->OnHitHandle->ReleaseHandle();
+	this->OnHitHandle.Reset(); 
+}*/
 
 void USkillInstance::ReleaseAuraHandle()
 {
-	if (!AuraHandle || !this->AuraHandle.IsValid()) return; // Early return, nada a fazer
+	if (!EntityOwnerAuraHandle || !this->EntityOwnerAuraHandle.IsValid()) return; // Early return, nada a fazer
 	
 	UE_LOG(LogTemp, Log, TEXT("Aura Assets Liberados da memória"))
 	
-	this->AuraHandle->ReleaseHandle();
-	this->AuraHandle.Reset(); 
+	this->EntityOwnerAuraHandle->ReleaseHandle();
+	this->EntityOwnerAuraHandle.Reset(); 
 }
 

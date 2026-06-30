@@ -13,9 +13,9 @@
 
 
 
-UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner, FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName)
+UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, AEntityClass* InEntityOwner, FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName)
 {	
-	if (!InEntityOwner || !InSkillDataAsset || !VFX || !Target ) return nullptr;
+	if (!InEntityOwner || !VFX || !Target ) return nullptr;
 
 	UNiagaraComponent* AttachedNiagara = UNiagaraFunctionLibrary::SpawnSystemAttached(
 		VFX,
@@ -31,34 +31,35 @@ UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, const USkill
 	{
 		case EAuraType::SkeletalMesh:
 			{
-				UNiagaraFunctionLibrary::OverrideSystemUserVariableSkeletalMeshComponent(AttachedNiagara,
-					TEXT("SkeletalMeshAura"),
-					Cast<USkeletalMeshComponent>(InEntityOwner->GetMesh()));
+				if (USkeletalMeshComponent* SkeletalMeshComponent = Cast<USkeletalMeshComponent>(InEntityOwner->GetMesh()))
+				{
+					UNiagaraFunctionLibrary::OverrideSystemUserVariableSkeletalMeshComponent(AttachedNiagara,
+						TEXT("SkeletalMesh"),
+						SkeletalMeshComponent);
+				}
 				break;
 			}
 		case EAuraType::StaticMesh:
 			{
-				UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(Target);
-				StaticMeshComp->GetStaticMesh()->bAllowCPUAccess = true;
-				UNiagaraFunctionLibrary::OverrideSystemUserVariableStaticMeshComponent(AttachedNiagara,
-					TEXT("StaticMeshAura"),
-					Cast<UStaticMeshComponent>(StaticMeshComp));
+				if (UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(Target))
+				{
+					StaticMeshComp->GetStaticMesh()->bAllowCPUAccess = true;
+					UNiagaraFunctionLibrary::OverrideSystemUserVariableStaticMeshComponent(AttachedNiagara,
+						TEXT("StaticMesh"),
+						Cast<UStaticMeshComponent>(StaticMeshComp));
+				}
 				break;
 			}
 		default:
 			break;
 	}
-	this->Context =  InSkillContext;
-	AttachedNiagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnAuraNiagaraSystemFinished);
 	return AttachedNiagara;
 }
 ASkillActor* USkillFeature::SpawnSkillActor(AEntityClass* InEntityOwner, FTransform SpawnTransform)
 {
 	
 	if (!IsValid(InEntityOwner) || !GetWorld()) return nullptr;
-
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("OPAAA")));
-
+	
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.Owner = InEntityOwner;
 	SpawnParams.Instigator = Cast<APawn>(InEntityOwner);
@@ -72,12 +73,8 @@ ASkillActor* USkillFeature::SpawnSkillActor(AEntityClass* InEntityOwner, FTransf
 	);
 }
 
-UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotator Rotation, FVector Location)
+UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotator Rotation, FVector Location, FSkillContext& InSkillContext)
 {
-	// if (!InEntityOwner || !InSkillDataAsset) return nullptr;
-	
-	UE_LOG(LogTemp, Warning, TEXT("VFX At Location"));
-	
 	if (IsValid(VFX))
 	{
 		
@@ -91,88 +88,32 @@ UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotat
 			true,
 			ENCPoolMethod::AutoRelease
 		);
-		
-		DetachedNiagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnNiagaraSystemFinished);
-		return DetachedNiagara;
-	}
-	return nullptr;
-}
-
-/*UNiagaraComponent* USkillFeature::SpawnCastVfx(const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner, FSkillContext InSkillContext, FVector TargetLocation)
-{
-	if (!InEntityOwner || !InSkillDataAsset) return nullptr;
 	
-	UActivationFeature* ActivationFeature = InSkillDataAsset->ActivationFeature;
-	if (!ActivationFeature) return nullptr;
-
-	if (UNiagaraSystem* CastVFX = ActivationFeature->CastEffect.LoadSynchronous())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("CastEffect Load"));
-		
-		UNiagaraComponent* DetachedNiagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-			GetWorld(),
-			CastVFX,
-			TargetLocation,
-			InEntityOwner->GetActorRotation(),
-			FVector(1.0f),
-			true, 
-			true,
-			ENCPoolMethod::AutoRelease
-		);
-	
+		if (!DetachedNiagara)
+		{
+			UE_LOG(LogTemp, Error, TEXT("SpawnVFXAtLocation falhou: O asset do Niagara não está carregado na RAM!"));
+			return nullptr; // Aborta para não crashar a engine
+		}
+		DetachedNiagara->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
 		if (!InSkillContext.Direction.IsZero())
 			DetachedNiagara->SetVectorParameter(FName("Direction"), InSkillContext.Direction);
 		
-		DetachedNiagara->SetFloatParameter(FName("MinCastTime"), ActivationFeature->MinCastTime);
-		DetachedNiagara->SetFloatParameter(FName("MaxCastTime"), ActivationFeature->MaxCastTime);
-			
-		this->Context = InSkillContext;
-		
-		DetachedNiagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnNiagaraSystemFinished);
 		return DetachedNiagara;
 	}
 	return nullptr;
-}*/
-
-void USkillFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	FinishedComponent->OnSystemFinished.RemoveAll(this);
-	
-	USkillInstance* SkillInstance = this->Context.SkillInstance.Get();
-	
-	if (SkillInstance)
-		SkillInstance->ReleaseAuraHandle();
 }
 
-void USkillFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
+void USkillFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
 {
-	FinishedComponent->OnSystemFinished.RemoveAll(this);
-}
-
-void USkillFeature::CleanNiagara()
-{
-	for (UNiagaraComponent* SpawnedNiagaraComponent : this->SpawnedNiagaraComponents)
+	for (TWeakObjectPtr NC : SpawnedNiagaraComponents)
 	{
-		if (IsValid(SpawnedNiagaraComponent))
+		if (UNiagaraComponent* Niagara = NC.Get())
 		{
-			SpawnedNiagaraComponent->SetFloatParameter(FName("SpawnRate"), 0.0f);
-			
-			FTimerHandle Timer;
-			
-			GetWorld()->GetTimerManager().SetTimer(
-				Timer, 
-				[SpawnedNiagaraComponent]() 
-				{
-					SpawnedNiagaraComponent->Deactivate();
-					SpawnedNiagaraComponent->DestroyComponent();
-				},
-					6.0f,
-				false,
-				-1
-			);
-		}
+			Niagara->SetAutoDestroy(true);
+			Niagara->Deactivate();
+		}	
 	}
-
+	SpawnedNiagaraComponents.Empty();
 }
 TArray<FOverlapResult> USkillFeature::MakeHitSphere(float Radius, FSkillContext& InSkillContext, FVector Location)
 {

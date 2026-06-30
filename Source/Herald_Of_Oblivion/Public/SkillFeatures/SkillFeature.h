@@ -41,23 +41,15 @@ class USkillInstance;
 class UNiagaraComponent;
 
 UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
-class HERALD_OF_OBLIVION_API USkillFeature : public UPrimaryDataAsset
+class HERALD_OF_OBLIVION_API USkillFeature : public UObject
 {
 	GENERATED_BODY()
 	
 public:
-	virtual FPrimaryAssetId GetPrimaryAssetId() const override {
-		return FPrimaryAssetId("SkillFeatureFX", GetFName());
-	}
 	
 	// Um Struct que guarda todos os dados relevantes sobre o evento de input
 	UPROPERTY()
 	FSkillContext Context;
-	
-	// Niagara Components spawnados, depois serao destruidos ao terminar a logica da feature
-	UPROPERTY()
-	TArray<UNiagaraComponent*> SpawnedNiagaraComponents = TArray<UNiagaraComponent*>();
-
 	
 	// // A entidade que castou a habilidade
 	// UPROPERTY()
@@ -80,22 +72,39 @@ public:
 	
 
 	// Para efeitos de habilidades em que nao quero criar um actor, apenas o niagara é necessário e ele precisa estar anexado a algum socket
-	UNiagaraComponent* SpawnAuraVFX(UNiagaraSystem* VFX, const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner,
-						FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName = NAME_None);
+	UNiagaraComponent* SpawnAuraVFX(UNiagaraSystem* VFX, AEntityClass* InEntityOwner,
+	                                FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName = NAME_None);
 	// Efeitos que precisa spawnar o skil actor
 	ASkillActor* SpawnSkillActor(AEntityClass* InEntityOwner, FTransform SpawnTransform);
-	UNiagaraComponent* SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotator Rotation, FVector Location);
-	// Para efeitos de habilidades em que nao quero criar um actor, apenas o niagara é necessário e ele não pode estar anexado a algum socket
-	UNiagaraComponent* SpawnCastVfx(const USkillDataAsset* InSkillDataAsset, AEntityClass* InEntityOwner,
-	                      FSkillContext InSkillContext, FVector TargetLocation);
+	UNiagaraComponent* SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotator Rotation, FVector Location, FSkillContext& InSkillContext);
 
-	// Limpa os handles utilizados
-	UFUNCTION()
-	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent);
-	virtual void CleanNiagara();
+	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents);
 	virtual TArray<FOverlapResult> MakeHitSphere(float Radius, FSkillContext& InSkillContext, FVector Location);
 	virtual void OnHitEntity(FSkillContext& InSkillContext);
-	UFUNCTION()
-	virtual void OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent);
 
+	FTimerHandle CleanNiagaraTimerHandle;
+	
+	UPROPERTY(EditAnywhere, Category = "Properties")
+	bool bMakeRotFromZ = true;
+	
+	// Define as propriedades de colisao da skill.
+	UPROPERTY(EditAnywhere, Category="Collision Component")
+	bool bHaveCollisionComponent = false;
+	
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	float RadiusCollision = 0.0f;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	bool bGenerateOverlapEvents = false;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	bool bGenerateHitEvents = false;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	bool bNotifyRigidBodyCollision = false;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	TEnumAsByte<ECollisionEnabled::Type> CollisionEnabled = ECollisionEnabled::NoCollision;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	TEnumAsByte<ECollisionResponse> PawnCollision = ECR_Ignore;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	TEnumAsByte<ECollisionResponse> WorldStaticCollision = ECR_Ignore;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	TEnumAsByte<ECollisionResponse> WorldDynamicCollision = ECR_Ignore;
 };

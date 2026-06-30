@@ -15,19 +15,20 @@ void UActivationFeature::Initialize(USkillInstance* Owner)
 		UE_LOG(LogTemp, Error, TEXT("UActivationFeature::Initialize - Owner (USkillInstance) invalido."));
 		return;
 	}
+	
 	Owner->OnSkillCastDelegate.AddUObject(this, &UActivationFeature::StartActivation);
 	Owner->OnSkillReleasedDelegate.AddUObject(this, &UActivationFeature::CompleteActivation);
 }
 
 void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 {
-	this->Context = InSkillContext;
-	
 	// Define o estágio atual da skill como Casting
 	InSkillContext.SkillStage = ESkillStage::Casting;
-	
+	GetWorld()->GetTimerManager().ClearTimer(this->CleanNiagaraTimerHandle);
+	GetWorld()->GetTimerManager().ClearTimer(this->TimerHandle);
+
 	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
-	FHitResult HitCursor = GetAimTarget(InSkillContext, 30.0f);
+	FHitResult HitCursor = GetAimTarget(InSkillContext, AimRadius);
 	if (AActor* HittedActor = HitCursor.GetActor())
 	{
 		if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
@@ -55,10 +56,9 @@ void UActivationFeature::CompleteActivation(FSkillContext& InSkillContext)
 			
 	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
 	
-	FHitResult HitCursor = GetAimTarget(InSkillContext, 30.0f);
+	FHitResult HitCursor = GetAimTarget(InSkillContext, AimRadius);
 	if (AActor* HittedActor = HitCursor.GetActor())
 	{
-			UE_LOG(LogTemp, Warning, TEXT("bateu no ator: %s"), *HittedActor->GetName());
 		if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
 		{
 			InSkillContext.EntityOnEndLocation = Entity;
@@ -76,29 +76,25 @@ void UActivationFeature::CompleteActivation(FSkillContext& InSkillContext)
 	InSkillContext.HoldDuration = InSkillContext.ReleasedTime - InSkillContext.CastTime;
 }
 
-void UActivationFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnNiagaraSystemFinished(FinishedComponent);
-}
 
-void UActivationFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
-}
 
 
 FHitResult UActivationFeature::GetAimTarget(FSkillContext& InContext, float Sensibility) const
 {
 	FHitResult HitResult;
 	
-	if (APlayerClass* Char = Cast<APlayerClass>(InContext.EntityOwner))
+	if (APlayerClass* Char = Cast<APlayerClass>(InContext.EntityOwner.Get()))
 	{
 		FVector Start = Char->GetCameraComponent()->GetComponentLocation();
-		FVector End = Start + Char->GetCameraComponent()->GetForwardVector() * 10000;
+		FVector End = Start + Char->GetCameraComponent()->GetForwardVector() * 50000;
 		FCollisionQueryParams CollisionParams;
 		CollisionParams.AddIgnoredActor(Char);
+		
 		GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::MakeFromRotator(FRotator::ZeroRotator),ECollisionChannel::ECC_Visibility, FCollisionShape::MakeSphere(Sensibility), CollisionParams);
 	}
+	UE_LOG(LogTemp, Warning, TEXT("LOCATIONN: %s"), *HitResult.Location.ToString())
+	UE_LOG(LogTemp, Warning, TEXT("IMPACT POINTT: %s"), *HitResult.ImpactPoint.ToString())
+	
 	return HitResult;
 }
 
@@ -116,7 +112,7 @@ FHitResult UActivationFeature::GetCursorLocation(FSkillContext& InContext) const
 	return HitCursor;
 }
 
-void UActivationFeature::CleanNiagara()
+void UActivationFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
 {
-	Super::CleanNiagara();
+	Super::CleanNiagara(SpawnedNiagaraComponents);
 }

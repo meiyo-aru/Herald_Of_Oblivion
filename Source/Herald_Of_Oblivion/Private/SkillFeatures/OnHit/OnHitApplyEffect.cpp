@@ -1,12 +1,11 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "SkillFeatures/OnHit/OnHitFeature.h"
+#include "SkillFeatures/OnHit/OnHitApplyEffect.h"
 
 #include "Core/SkillInstance.h"
-#include "Data/SkillDataAsset.h"
 
-void UOnHitFeature::Initialize(USkillInstance* Owner)
+void UOnHitApplyEffect::Initialize(USkillInstance* Owner)
 {
 	Super::Initialize(Owner);
 	if (Owner) 
@@ -16,7 +15,7 @@ void UOnHitFeature::Initialize(USkillInstance* Owner)
 	}; 
 }
 
-void UOnHitFeature::Execute(FSkillContext& InSkillContext)
+void UOnHitApplyEffect::Execute(FSkillContext& InSkillContext)
 {
-	InSkillContext.SkillStage = ESkillStage::Hitting;
+	Super::Execute(InSkillContext);
 }

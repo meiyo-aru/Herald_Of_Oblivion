@@ -39,8 +39,8 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-	// Carrega os Assets necessários da skill baseado em seu estado de ativação
-	void LoadCastingSkillAssets(USkillInstance* SkillInstance);
+	// Carrega os Assets de ativação necessários da skill
+	void LoadActivationSkillAssets(USkillInstance* SkillInstance) override;
 
 public:
 	// Called every frame
@@ -61,14 +61,11 @@ protected:
 	// Define as skills iniciais da entidade
 	UFUNCTION(BlueprintCallable, Category="Functions")
 	virtual void DefineSkills() override;
-	// Executa lógica ao carregar as habilidades do AssetManager
-	virtual void OnAllSkillsLoaded(TArray<FPrimaryAssetId> LoadedIds) override;
-	void OnSkillLoaded(FPrimaryAssetId LoadedId);
 	
 	// Recebe um id e cria uma instancia e o adiciona a SkillInstances
 	UFUNCTION(BlueprintCallable, Category="Functions")
-	void TakeSkill(FPrimaryAssetId SkillId);
-	
+	void TakeSkill(FPrimaryAssetId AssetId);
+
 	bool HasSkill(FPrimaryAssetId SkillId) const;
 	
 	// Recebe uma instância de skill e equipa ou desequipa
@@ -106,10 +103,7 @@ protected:
 	// void HandleCastQuickAccess(int slot);
 	
 // Propriedades
-	// Os ids das skills para serem exibidas nos menus
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Properties")
-	TArray<FPrimaryAssetId> UISkills;
-
+public:
 	// As skills equipadas do jogador
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Properties")
 	TArray<USkillInstance*> EquippedSkillsInstances;
@@ -167,5 +161,4 @@ protected:
 	// Função que processa o Input
 	UFUNCTION(BlueprintCallable, Category="Functions")
 	void MouseLook(const FInputActionValue& Value);
-	
 };

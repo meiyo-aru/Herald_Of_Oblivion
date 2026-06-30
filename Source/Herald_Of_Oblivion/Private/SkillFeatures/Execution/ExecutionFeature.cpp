@@ -19,19 +19,9 @@ void UExecutionFeature::Execute(FSkillContext& InSkillContext)
 	InSkillContext.SkillStage = ESkillStage::InExecution;
 }
 
-void UExecutionFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
+void UExecutionFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
 {
-	Super::OnNiagaraSystemFinished(FinishedComponent);
-}
-
-void UExecutionFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
-}
-
-void UExecutionFeature::CleanNiagara()
-{
-	Super::CleanNiagara();
+	Super::CleanNiagara(SpawnedNiagaraComponents);
 }
 
 void UExecutionFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext)

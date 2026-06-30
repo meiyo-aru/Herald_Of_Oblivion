@@ -22,10 +22,9 @@ class HERALD_OF_OBLIVION_API UActivationInstantFeature : public UActivationFeatu
 	
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
-
-	// Limpa os handles utilizados
-	virtual void OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent) override;
 	
 	// Lógica de ativação inicial e final
-	virtual void StartActivation(FSkillContext& InSkillContext) override;	
+	virtual void StartActivation(FSkillContext& InSkillContext) override;
+	
+	FTimerHandle CastTimerHandle;
 };

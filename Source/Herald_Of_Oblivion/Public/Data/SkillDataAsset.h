@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Enumerators/ItemEnums.h"
 #include "Enumerators/SkillEnums.h"
 #include "Structs/SkillStructs.h"
 #include "Engine/EngineTypes.h"
@@ -44,8 +45,6 @@ public:
 		return FPrimaryAssetId("Skill", GetFName());
 	}
 	
-	UNiagaraComponent* SpawnVFXAtLocation(UWorld* World, UNiagaraSystem* System, const FVector& Location, const FRotator& Rotation) const;
-
 	// Recebe uma entidade e cria uma instancia da habilidade para ela
 	USkillInstance* CreateInstance(AEntityClass* Owner);
 
@@ -63,7 +62,7 @@ public:
 	
 	// Tipo da habilidade
 	UPROPERTY(EditAnywhere, Category="UI", AssetRegistrySearchable)
-	ESkillTypeEnum Type =ESkillTypeEnum::None;
+	ESkillTypeEnum Type = ESkillTypeEnum::None;
 	
 	// Nível mínimo da entidade
 	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable)
@@ -76,12 +75,12 @@ public:
 	// ESkillTagsEnum Tags;
 	
 	// FName da especializacao, usado para filtrar skills pela especializacao
-	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable)
+	UPROPERTY(AssetRegistrySearchable)
 	FName SpecializationName;
 	
 	// A especialização(classe) da habilidade, exemplo: Guerreiro, Mago.
 	UPROPERTY(EditAnywhere, Category="Properties", meta = (AssetBundle = "UI"))
-	TSoftObjectPtr<USpecializationDataAsset> Specialization;
+	USpecializationDataAsset* Specialization;
 	
 	// Descrição da habilidade
 	UPROPERTY(EditAnywhere, Category="UI")
@@ -99,7 +98,27 @@ public:
 	
 	// O tempo de recarga da habilidade
 	UPROPERTY(EditAnywhere, Category="Properties")
-	float Cooldown;
+	float Cooldown = 0.0f;
+	
+	// Tempo de lançamento, algumas habilidades precisam ser preparadas antes de lançadas (mesmo que não sejam de carga), 
+	// cada habilidade pode usar um atributo diferente para reduzir seu tempo de cast
+	UPROPERTY(EditAnywhere, Category="Properties")
+	float CastTime = 0.0f;
+
+	// Multiplicador do redutor de tempo de lançamento, de 0.0 a 1.0 indica quanto o atributo redutor vai influenciar
+	// no casttime. 1.0 significa que 50 de força resultará em uma redução de 50%
+	UPROPERTY(EditAnywhere, Category="Properties")
+	float MultiplierReduceCastTime = 1.0f;
+	
+	// Atributo que reduz o tempo de cast da habilidade
+	UPROPERTY(EditAnywhere, Category="Properties")
+	EEntitySimbolicAttributeEnum ReduceCastTimeAttribute = EEntitySimbolicAttributeEnum::None;
+	
+	// Define se a skill precisa de uma arma equipada e seu tipo
+	UPROPERTY(EditAnywhere, Category="Properties")
+	bool bWeaponIsNecessary = false;
+	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable, meta=(EditCondition="bWeaponIsNecessary", EditConditionHides))
+	EWeaponType WeaponType = EWeaponType::None;
 	
 	// O icone da habilidade
 	UPROPERTY(EditAnywhere, Category="UI", meta = (AssetBundles = "UI"))
@@ -111,6 +130,6 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
 	UExecutionFeature* ExecutionFeature;
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	UOnHitFeature* OnHitFeature;
+	TArray<UOnHitFeature*> OnHitFeature;
 
 };

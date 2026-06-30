@@ -1,4 +1,6 @@
 ﻿#include "Structs/SkillStructs.h"
+
+#include "NiagaraComponent.h"
 #include "Core/SkillInstance.h"   
 #include "Core/EntityClass.h" 
 
@@ -32,5 +34,15 @@ void FSkillContext::Reset()
 	ReleasedTime = 0.0f;
 	HoldDuration = 0.0f;
 	ChargeRatio = 0.0f;
+	
+	for (TWeakObjectPtr<UNiagaraComponent> NC : SpawnedNiagaraComponents)
+	{
+		if (UNiagaraComponent* Niagara = NC.Get())
+		{
+			Niagara->SetAutoDestroy(true);
+			Niagara->Deactivate();
+		}	
+	}
+	SpawnedNiagaraComponents.Empty();
 }
 

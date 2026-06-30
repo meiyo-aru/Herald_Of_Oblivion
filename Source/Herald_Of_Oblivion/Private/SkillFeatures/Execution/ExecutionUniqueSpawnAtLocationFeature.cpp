@@ -11,9 +11,9 @@
 #include "SkillFeatures/Execution/ExecutionSpawnProjectileFeature.h"
 #include "Kismet/KismetMathLibrary.h"
 
-void UExecutionUniqueSpawnAtLocationFeature::CleanNiagara()
+void UExecutionUniqueSpawnAtLocationFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
 {
-	Super::CleanNiagara();
+	Super::CleanNiagara(SpawnedNiagaraComponents);
 }
 
 void UExecutionUniqueSpawnAtLocationFeature::Initialize(USkillInstance* Owner)
@@ -25,7 +25,7 @@ void UExecutionUniqueSpawnAtLocationFeature::Execute(FSkillContext& InSkillConte
 {
 	Super::Execute(InSkillContext);
 	
-	InSkillContext.SkillStage = ESkillStage::Hitted;
+	InSkillContext.SkillStage = ESkillStage::InExecution;
 	
 	if (!InSkillContext.bActivated) return;
 	if (InSkillContext.EndLocation.IsZero()) return;
@@ -40,8 +40,6 @@ void UExecutionUniqueSpawnAtLocationFeature::Execute(FSkillContext& InSkillConte
 	
 	this->SpawnAtLocation(InSkillContext);
 	
-	SkillInstance->FinishSkill();		
-	SkillInstance->GoOnCooldown();
 }
 
 void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSkillContext)
@@ -50,13 +48,6 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 	if (!SkillInstance)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation - SkillInstance invalido."));
-		return;
-	}
-	
-	const USkillDataAsset* SkillDataAsset = SkillInstance->GetDataAsset();
-	if (!SkillDataAsset)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation - SkillDataAsset invalido."));
 		return;
 	}
 	
@@ -75,16 +66,19 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 		return;
 	}
 	
-	const FVector SpawnLocation = InSkillContext.StartLocation;
-	if (SpawnLocation.IsZero()) {UE_LOG(LogTemp, Error, TEXT("UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation - SpawnLocation inválido.")); return;};
-
+	const FVector SpawnLocation = bSpawnOnEndLocation ? InSkillContext.EndLocation : InSkillContext.StartLocation;
+	
 	const FVector SurfaceNormal = InSkillContext.StartSurfaceNormal;
 	
-	const FRotator SpawnRotation = !SurfaceNormal.IsZero()
-		? UKismetMathLibrary::MakeRotFromZ(SurfaceNormal)
-		: FRotator::ZeroRotator;
+	FRotator SpawnRotation;
+	
+	if (bMakeRotFromZ)
+		SpawnRotation = !SurfaceNormal.IsZero()
+			? UKismetMathLibrary::MakeRotFromZ(SurfaceNormal)
+			: FRotator::ZeroRotator;
+	else SpawnRotation = FRotator::ZeroRotator;
 
-	UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(VFX, SpawnRotation, SpawnLocation);
+	UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(VFX, SpawnRotation, SpawnLocation, InSkillContext);
 
 	if (!NiagaraComp)
 	{
@@ -92,7 +86,6 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 		return;
 	}
 		
-	NiagaraComp->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
 	NiagaraComp->SetFloatParameter(FName("MinLifeSpan"), this->MinLifeSpan);
 	NiagaraComp->SetFloatParameter(FName("MaxLifeSpan"), this->MaxLifeSpan);
 	NiagaraComp->SetFloatParameter(FName("Radius"), this->Intensity);
@@ -106,26 +99,10 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 		UE_LOG(LogTemp, Warning, TEXT("Colidiu com %s"), *OutOverlap.GetActor()->GetName());
 		InSkillContext.HitOverlapResultType = EHitOverlapResultType::Overlap;
 		InSkillContext.OverlapResult = OutOverlap;
-		
-		if (OutOverlap.GetActor()->GetClass() == AEntityClass::StaticClass())
-			InSkillContext.SkillInstance->OnHitEntity.Broadcast(InSkillContext, Cast<AEntityClass>(OutOverlap.GetActor()));
-		else
-			InSkillContext.SkillInstance->OnHitSurface.Broadcast(InSkillContext, InSkillContext.StartLocation);
+		SkillInstance->OnSkillHitDelegate.Broadcast(InSkillContext);
 	}	
 }
 
-void UExecutionUniqueSpawnAtLocationFeature::OnNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnNiagaraSystemFinished(FinishedComponent);
-	AActor* Actor = FinishedComponent->GetOwner();
-	if (IsValid(Actor))
-		Actor->Destroy();
-}
-
-void UExecutionUniqueSpawnAtLocationFeature::OnAuraNiagaraSystemFinished(UNiagaraComponent* FinishedComponent)
-{
-	Super::OnAuraNiagaraSystemFinished(FinishedComponent);
-}
 
 void UExecutionUniqueSpawnAtLocationFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext)
 {
