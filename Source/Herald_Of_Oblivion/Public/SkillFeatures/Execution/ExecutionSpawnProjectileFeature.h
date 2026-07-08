@@ -19,18 +19,23 @@ class HERALD_OF_OBLIVION_API UExecutionSpawnProjectileFeature : public UExecutio
 	GENERATED_BODY()
 	
 public:
-
+	// Velocidade do projétil
 	UPROPERTY(EditAnywhere, Category="Projectile")
 	float Speed;
-	
+	// Tempo de vida do projétil
 	UPROPERTY(EditAnywhere, Category="Projectile")
 	float LifeSpan;
+	// Distância máxima que o projétil chega
 	UPROPERTY(EditAnywhere, Category="Projectile")
 	float MaximumRange = 50000;
+
+	// Carrega os FX de forma assincrona ou não
+	virtual void LoadFXSync() override;
 
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 	
+	// Executa a lógica principal da Feature
 	virtual void Execute(FSkillContext& InSkillContext) override;
 	
 	// Spawna o projetil

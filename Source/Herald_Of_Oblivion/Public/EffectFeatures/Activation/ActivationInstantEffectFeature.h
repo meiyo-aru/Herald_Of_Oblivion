@@ -15,4 +15,8 @@ UCLASS()
 class HERALD_OF_OBLIVION_API UActivationInstantEffectFeature : public UActivationEffectFeature
 {
 	GENERATED_BODY()
+public:
+	virtual void Init(FHitOverlapResult& HitOverlapResult) override;
+	
+	virtual void Execute(FHitOverlapResult& HitOverlapResult) override;
 };

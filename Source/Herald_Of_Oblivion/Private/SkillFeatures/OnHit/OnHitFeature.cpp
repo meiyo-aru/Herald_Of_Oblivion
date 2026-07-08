@@ -6,6 +6,10 @@
 #include "Core/SkillInstance.h"
 #include "Data/SkillDataAsset.h"
 
+void UOnHitFeature::LoadFXSync()
+{
+}
+
 void UOnHitFeature::Initialize(USkillInstance* Owner)
 {
 	Super::Initialize(Owner);

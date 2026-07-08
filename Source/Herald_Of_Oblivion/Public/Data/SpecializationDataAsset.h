@@ -6,15 +6,23 @@
 #include "Engine/DataAsset.h"
 #include "SpecializationDataAsset.generated.h"
 
+class UItemDataAsset;
+class USkillDataAsset;
+class UEquipmentDataAsset;
+enum class EEquipmentSlot : uint8;
 /**
  * 
  */
-UCLASS(BlueprintType)
-class HERALD_OF_OBLIVION_API USpecializationDataAsset : public UDataAsset
+UCLASS(BlueprintType, Blueprintable)
+class HERALD_OF_OBLIVION_API USpecializationDataAsset : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 	
 public:
+	FPrimaryAssetId GetPrimaryAssetId() const {
+		return FPrimaryAssetId("Specialization", GetFName());
+	}
+	
 	// O nome da especializacao
 	UPROPERTY(EditAnywhere, Category="Properties")
 	FText Name;
@@ -22,4 +30,13 @@ public:
 	// A descrição da especializacao
 	UPROPERTY(EditAnywhere, Category="Properties")
 	FText Description;
+	
+	UPROPERTY(EditAnywhere, Category="Properties")
+	TSet<TObjectPtr<UEquipmentDataAsset>> InitialEquipments;
+	
+	UPROPERTY(EditAnywhere, Category="Properties")
+	TSet<TObjectPtr<UItemDataAsset>> InitialItems;
+	
+	UPROPERTY(EditAnywhere, Category="Properties")
+	TArray<TObjectPtr<USkillDataAsset>> InitialSkills;
 };

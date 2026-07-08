@@ -7,6 +7,7 @@
 #include "Enumerators/ItemEnums.h"
 #include "Structs/EntityStructs.h"
 #include "GameFramework/Character.h"
+#include "Structs/SkillStructs.h"
 #include "EntityClass.generated.h"
 
 /**
@@ -14,13 +15,17 @@
  * Classe pai de todas as entidades.
  */
 
+// Forward declarations para reduzir includes no header.
 class UEquipmentInstance;
 class USkillDataAsset;
 class UEquipmentDataAsset;
 class AEquipmentActor;
 class USpecializationDataAsset;
 class USkillInstance;
-class UEffect;
+class UEffectInstance;
+
+// Delegate para notificar mudanças de vida
+DECLARE_DELEGATE_OneParam(FOnHealthChangedSignature, float);
 
 UCLASS(Blueprintable, BlueprintType)
 class HERALD_OF_OBLIVION_API AEntityClass : public ACharacter
@@ -30,49 +35,58 @@ class HERALD_OF_OBLIVION_API AEntityClass : public ACharacter
 public:
 	// Sets default values for this actor's properties
 	AEntityClass();
+	
+	FOnHealthChangedSignature OnHealthChanged;
 
-// Métodos
-protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+	// Executa a logica de morte da entidade.
 	virtual void Die();
-	FAttribute GetSimbolicAttribute(EEntitySimbolicAttributeEnum SimbolicAttribute) const {return SimbolicAttributes[SimbolicAttribute];};
-	FAttribute GetTrueAttribute(EEntityTrueAttributeEnum TrueAttribute) const {return TrueAttributes[TrueAttribute];};
+	
+	// Apenas remove o efeito do array de efeitos ativos da entidade
+	void RemoveEffect(FPrimaryAssetId EffectId);
+	
+	// Retorna o atributo simbolico.
+	FAttribute* GetSimbolicAttribute(EEntitySimbolicAttributeEnum SimbolicAttribute);
+	// Retorna o atributo verdadeiro.
+	FAttribute* GetTrueAttribute(EEntityTrueAttributeEnum TrueAttribute);
 
+	FPrimaryAssetId GetSpecializationId() const {return Specialization;};
+	
+	int8 GetAmountActiveEffects(FPrimaryAssetId EffectId);
+	void ApplyEffect(UEffectInstance* Effect, FHitOverlapResult& HitOverlapResult);
+	void ApplyEffect(FPrimaryAssetId EffectId);
+	
+	// Equipa o equipamento
+	void EquipEquipment(UEquipmentInstance* Equipment);
+
+	// Busca o actor fisico de um equipamento equipado em um slot.
 	AEquipmentActor* GetEquipmentActor(EEquipmentSlot Slot);
-	
-	void TakeItem();
-	
+
 	#if WITH_EDITOR // Compila este código apenas no editor
 		// Chamado quando uma propriedade é alterada no editor
 		virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	#endif
+	
+	// Carrega os Assets na memória - Apenas os assets necessários imediatamente ao Castar a skill
+	virtual void LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync);
 
+	// Recebe dano, funcao sobrescrita da classe pai
+	virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	
+	// Atribui uma restricao a entidade
+	virtual void TakeRestriction(ERestrictionTypeEnum Restriction);
+	
+	FAttribute* GetEquivalentResistanceAttribute(ETypeDamage InTypeDamage);
 	
 protected:
 	// Calcula o retorno de XP esperado ao abater a entidade em questão. O calculo é feito utilizando a raridade da entidade e a diferenca de nivel
 	virtual float CalculateXPReturn(AEntityClass* Killer);
-	virtual float TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-
-	// Atribui uma restricao a entidade
-	virtual void TakeRestriction(ERestrictionTypeEnum Restriction);
 	
 	// Define os atributos padrão para todas as criaturas, é sobrescrito pelo método da classe filha
 	virtual void DefineAttributes();
-
-	// Inicializam as skills
-	void InitializeSkills(TArray<USkillInstance*> SkillInstances);
-	void InitializeSkills(USkillInstance* SkillInstance);
-	virtual void LoadActivationSkillAssets(USkillInstance* SkillInstance);
-
-	// Define as Skills base para todas as criaturas
-	virtual void DefineSkills();
-
-// Propriedades
 	
 	// Nome da entidade
 	UPROPERTY(EditAnywhere, Category="Properties")
@@ -83,15 +97,15 @@ protected:
 	FName SpecializationName;
 	
 	// A especialização (classe) da entidade 
-	UPROPERTY(EditAnywhere, Category="Combat")
-	USpecializationDataAsset* Specialization;
+	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Specialization"))
+	FPrimaryAssetId Specialization;
 	
 	// Conquistas de abate da entidade. Exemplo: Fast Kill é uma conquista que pode ser adquirida ao matar a entidade muito rápido
-	UPROPERTY(EditAnywhere, Category="Combat")
+	UPROPERTY(EditAnywhere, Category="FX")
     TArray<FEntitySlaughterAchievementsStruct> SlaughterAchievements;
 	
 	// As Conquistas de abate alcançadas pelo jogador
-	UPROPERTY(EditAnywhere, Category="Combat")
+	UPROPERTY(EditAnywhere, Category="FX")
 	TArray<EEntitySlaughterAchievementsEnum> SlaughterAchievementsReached;
 	
 	// Raca da entidade, Ex: Elfo, Humano
@@ -118,33 +132,25 @@ protected:
 	// UPROPERTY(EditAnywhere, Category="Properties")
 	// TArray<EBlessingEnum> Blessings;
 	
-	// Os Efeitos afetando a entidade no momento
-	UPROPERTY(EditAnywhere, Category="Combat")
-	TArray<UEffect*> Effects;
-	
-	// Um array com os assets das habilidades iniciais
-	UPROPERTY(EditAnywhere,  Category="Combat", meta=(AllowedTypes = "Skill"))
-	TArray<FPrimaryAssetId> InitialSkillsAssets;
+	// Os efeitos afetando a entidade no momento.
+	UPROPERTY(EditAnywhere, Category="FX")
+	TMap<FPrimaryAssetId, TWeakObjectPtr<UEffectInstance>> Effects;
 	
 	// Array para as instâncias das habilidades.
-	UPROPERTY(EditAnywhere, Category="Combat")
-	TArray<USkillInstance*> SkillsInstances;
+	UPROPERTY(EditAnywhere, Category="FX")
+	TArray<TObjectPtr<USkillInstance>> SkillsInstances;
 	
 	// Os atributos simbolicos da entidade
-	UPROPERTY(EditAnywhere, Category="Combat")
+	UPROPERTY(EditAnywhere, Category="FX")
 	TMap<EEntitySimbolicAttributeEnum, FAttribute> SimbolicAttributes;
 	
 	// Os atributos verdadeiros da entidade
-	UPROPERTY(EditAnywhere, Category="Combat")
+	UPROPERTY(EditAnywhere, Category="FX")
 	TMap<EEntityTrueAttributeEnum, FAttribute> TrueAttributes; 
-	
-	// Um tarray dos equipamentos iniciais
-	UPROPERTY(EditAnywhere, Category="Equipments", meta=(AllowedTypes = "Equipment"))
-	TArray<FPrimaryAssetId> InitialEquipmentsAssets;
 	
 	// Um tmap das instancias dos equipamentos
 	UPROPERTY(EditAnywhere, Category="Equipments")
-	TMap<EEquipmentSlot, TObjectPtr<UEquipmentInstance>> EquippedEquipments;
+	TMap<EEquipmentSlot, TWeakObjectPtr<UEquipmentInstance>> EquippedEquipments;
 	
 	// TArray<TSoftObjectPtr<UItemInstance>> Equipment;
 	// TMap<FName, TArray<FPrimaryAssetId>> Sounds;
@@ -152,11 +158,11 @@ protected:
 	// TSoftObjectPtr<UWidgetComponent> OptionsWidgetComponent;
 	// TSoftObjectPtr<UDataAsset> DialogueData;
 	
-	//O material da superfície onde a entidade está pisando
+	// O material da superficie onde a entidade esta pisando.
 	UPROPERTY(EditAnywhere, Category="Properties")
 	UPhysicalMaterial* SurfaceMaterial;
 	
 	// As restricoes afetando a entidade no momento
-	UPROPERTY(EditAnywhere, Category="Combat")
+	UPROPERTY(EditAnywhere, Category="FX")
 	TArray<ERestrictionTypeEnum> Restrictions;
 };

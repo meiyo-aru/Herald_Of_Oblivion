@@ -5,6 +5,7 @@
 
 #include "NiagaraComponent.h"
 #include "NiagaraDataInterfaceArrayFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "Chaos/Utilities.h"
 #include "Character/PlayerClass.h"
 #include "Core/EntityClass.h"
@@ -13,9 +14,14 @@
 #include "Core/SkillInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 
-void UExecutionThornFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
+void UExecutionThornFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
 	Super::CleanNiagara(SpawnedNiagaraComponents);
+}
+
+void UExecutionThornFeature::LoadFXSync()
+{
+	Super::LoadFXSync();
 }
 
 void UExecutionThornFeature::Initialize(USkillInstance* Owner)
@@ -52,14 +58,19 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 		return;
 	}
 	
-	UNiagaraSystem* VFX = this->ExecutionEffect.Get();
+	UNiagaraSystem* VFX;
+	if (LoadedExecutionEffect) 
+		VFX = LoadedExecutionEffect;
+	else 
+		VFX = ExecutionEffect.Get();
+
 	if (!VFX)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(this));
 		return;
 	}
 	
-	AEntityClass* EntityOwner = InSkillContext.EntityOwner.Get();
+	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 	if (!EntityOwner)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionThornFeature::SpawnThorn - EntityOwner invalido."));
@@ -155,6 +166,7 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 
 void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext)
 {
+	 UE_LOG(LogTemp, Warning, TEXT("UExecutionThornFeature::ProccessParticles"));
 	// if (this->ParticlesProcessed >= Data.Num()) return;
 	FVector StartLocation = SkillContext.StartLocation; // ou seu Start Location real
 	FVector TargetLocation = SkillContext.EndLocation;    // ou seu Target real
@@ -181,44 +193,47 @@ void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticl
 		FCollisionQueryParams QueryParams;
 		
 		ASkillActor* SkillActor = SkillContext.SkillActor.Get();
-		AEntityClass* EntityOwner = SkillContext.EntityOwner.Get();
+		AEntityClass* EntityOwner = Cast<AEntityClass>(SkillContext.EntityOwner.Get());
 		
 		if (!IsValid(EntityOwner) || !IsValid(SkillActor)) return;
 		
 		QueryParams.AddIgnoredActor(SkillActor); // Ignora o próprio projétil/espinho
 		if (EntityOwner) QueryParams.AddIgnoredActor(Cast<AActor>(EntityOwner)); // Ignora quem lançou
 		
-		// 3. Executar o teste de colisão
-		bool bHit = GetWorld()->OverlapMultiByChannel(
-			OutOverlaps,
-			TipPosition, // Centro da caixa
-			FQuat::Identity,
-			ECC_Pawn,
-			MyHitSphere,
-			QueryParams
-		);		
-
-		if (bHit)
+		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 		{
-			for (FOverlapResult OutOverlap : OutOverlaps)
+			// 3. Executar o teste de colisão
+			bool bHit = World->OverlapMultiByChannel(
+				OutOverlaps,
+				TipPosition, // Centro da caixa
+				FQuat::Identity,
+				ECC_Pawn,
+				MyHitSphere,
+				QueryParams
+			);		
+
+			if (bHit)
 			{
-				AActor* HitActor = OutOverlap.GetActor();
-				if (HitActor && HitActor->IsA(AEntityClass::StaticClass()))
+				for (FOverlapResult OutOverlap : OutOverlaps)
 				{
-					// 1. Converter o ID (que está no Size) para INT para evitar bugs de float no Map
-					int32 PId = FMath::RoundToInt(Particle.Size);
-					FName ActorName = HitActor->GetFName();
-
-					// 2. Usar FindOrAdd para garantir que o par exista antes de acessar
-					FEntityArrayWrapper& Wrapper = this->ParticlesIDCollided.FindOrAdd(PId);
-
-					// 3. Verificar se este Actor específico já foi atingido por ESTA partícula
-					if (!Wrapper.Entities.Contains(ActorName))
+					AActor* HitActor = OutOverlap.GetActor();
+					if (HitActor && HitActor->IsA(AEntityClass::StaticClass()))
 					{
-						UE_LOG(LogTemp, Warning, TEXT("ID %d Machucou: %s"), PId, *ActorName.ToString());
-                    
-						Wrapper.Entities.Add(ActorName);
-						// AQUI: Chame sua função de aplicar dano real
+						// 1. Converter o ID (que está no Size) para INT para evitar bugs de float no Map
+						int32 PId = FMath::RoundToInt(Particle.Size);
+						FName ActorName = HitActor->GetFName();
+
+						// 2. Usar FindOrAdd para garantir que o par exista antes de acessar
+						FEntityArrayWrapper& Wrapper = this->ParticlesIDCollided.FindOrAdd(PId);
+
+						// 3. Verificar se este Actor específico já foi atingido por ESTA partícula
+						if (!Wrapper.Entities.Contains(ActorName))
+						{
+							UE_LOG(LogTemp, Warning, TEXT("ID %d Machucou: %s"), PId, *ActorName.ToString());
+	                    
+							Wrapper.Entities.Add(ActorName);
+							// AQUI: Chame sua função de aplicar dano real
+						}
 					}
 				}
 			}
@@ -229,10 +244,15 @@ void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticl
 
 TArray<FHitResult> UExecutionThornFeature::CheckSurfaceInAim(FSkillContext& InSkillContext, TArray<ESurfaceType>& InValidSurfaces)
 {
-	APlayerClass* Char = Cast<APlayerClass>(InSkillContext.EntityOwner);
+	APlayerClass* Char = Cast<APlayerClass>(InSkillContext.EntityOwner.Get());
+	if (!IsValid(Char))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("UExecutionThornFeature::CheckSurfaceInAim InSkillContext.EntityOwner Invalid"));
+		return TArray<FHitResult>();
+	}
 	
 	FVector Start = Char->GetCameraComponent()->GetComponentLocation();
-	FVector End = Start + (InSkillContext.StartLocation - Start) * MaxRange;
+	FVector End = Start + (InSkillContext.StartLocation - Start) * 10000;
 	
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(Char);
@@ -284,29 +304,33 @@ TArray<FHitResult> UExecutionThornFeature::LineTraceAroundLocation(FVector Start
 	{
 		FVector NewStart = StartLocation + Offset;
 		FVector NewEnd = EndLocation + Offset;
-
-		FHitResult Hit;
-		GetWorld()->LineTraceSingleByChannel(Hit, NewStart, NewEnd, ECC_Visibility, CollisionParams);
-		
-		if (Hit.bBlockingHit)
-			ExternTraces.Add(Hit);
-	}
-
-	// Trace central original
-	FHitResult CentralHit;
-	GetWorld()->LineTraceSingleByChannel(CentralHit, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
-	
-	TArray<FHitResult> OutValidHits;
-	OutValidHits.Add(CentralHit);
-	
-	for (FHitResult ExternHit : ExternTraces)
-	{
-		float DistanceOfCentralHit = FVector::Dist(CentralHit.ImpactPoint, ExternHit.ImpactPoint);
-		if (DistanceOfCentralHit < 200.0f)
+		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 		{
-			OutValidHits.Add(ExternHit);
+			FHitResult Hit;
+			World->LineTraceSingleByChannel(Hit, NewStart, NewEnd, ECC_Visibility, CollisionParams);
+			
+			if (Hit.bBlockingHit)
+				ExternTraces.Add(Hit);
+		}
+		
+	}
+	TArray<FHitResult> OutValidHits;
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+	{
+		// Trace central original
+		FHitResult CentralHit;
+		World->LineTraceSingleByChannel(CentralHit, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
+		
+		OutValidHits.Add(CentralHit);
+		
+		for (FHitResult ExternHit : ExternTraces)
+		{
+			float DistanceOfCentralHit = FVector::Dist(CentralHit.ImpactPoint, ExternHit.ImpactPoint);
+			if (DistanceOfCentralHit < 200.0f)
+			{
+				OutValidHits.Add(ExternHit);
+			}
 		}
 	}
-	
 	return OutValidHits;
 }

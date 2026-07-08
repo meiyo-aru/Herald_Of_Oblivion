@@ -49,7 +49,6 @@ TArray<FPrimaryAssetId> UAssetManagerUtility::GetInitialSkillsBySpecialization(F
 		if (Data.GetTagValue("SpecializationName", SpecializationValue) && 
 			Data.GetTagValue("bIsInitial", bIsInitialValue))
 		{
-			// 2. Não precisamos mais do .ToBool(), usamos a variável diretamente
 			if (SpecializationValue == TargetSpecialization && bIsInitialValue)
 			{
 				SkillsBySpecialization.Add(Data.GetPrimaryAssetId());

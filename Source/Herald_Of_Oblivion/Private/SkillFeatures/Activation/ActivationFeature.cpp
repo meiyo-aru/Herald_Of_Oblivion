@@ -6,6 +6,14 @@
 #include "Character/PlayerClass.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
+#include "Sound/SoundCue.h"
+#include "NiagaraSystem.h"
+
+void UActivationFeature::LoadFXSync()
+{
+	LoadedActivationEffect = ActivationEffect.LoadSynchronous();
+	LoadedSoundCue = ActivationSound.LoadSynchronous();
+}
 
 void UActivationFeature::Initialize(USkillInstance* Owner)
 {
@@ -24,95 +32,103 @@ void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 {
 	// Define o estágio atual da skill como Casting
 	InSkillContext.SkillStage = ESkillStage::Casting;
-	GetWorld()->GetTimerManager().ClearTimer(this->CleanNiagaraTimerHandle);
-	GetWorld()->GetTimerManager().ClearTimer(this->TimerHandle);
-
-	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
-	FHitResult HitCursor = GetAimTarget(InSkillContext, AimRadius);
-	if (AActor* HittedActor = HitCursor.GetActor())
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
+		World->GetTimerManager().ClearTimer(this->CleanNiagaraTimerHandle);
+		World->GetTimerManager().ClearTimer(this->TimerHandle);
+
+		// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
+		FHitResult HitCursor = GetAimTarget(InSkillContext, AimRadius);
+		if (AActor* HittedActor = HitCursor.GetActor())
 		{
-			InSkillContext.EntityOnStartLocation = Entity;
-		} else
-		{
-			InSkillContext.EntityOnEndLocation = nullptr;
+			if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
+			{
+				InSkillContext.EntityOnStartLocation = Entity;
+			} else
+			{
+				InSkillContext.EntityOnEndLocation = nullptr;
+			}
 		}
+		
+		InSkillContext.StartSurfaceNormal = HitCursor.ImpactNormal;
+		InSkillContext.StartLocation = HitCursor.ImpactPoint;
+		
+		InSkillContext.CastTime = World->GetTimeSeconds();
 	}
-	
-	InSkillContext.StartSurfaceNormal = HitCursor.ImpactNormal;
-	InSkillContext.StartLocation = HitCursor.ImpactPoint;
-	
-	InSkillContext.CastTime = GetWorld()->GetTimeSeconds();
 }
 
 void UActivationFeature::CompleteActivation(FSkillContext& InSkillContext)
 {
-	// 1. Se o timer ainda existir (porque o jogador soltou o botão antes do tempo), limpe-o
-	if (GetWorld()->GetTimerManager().IsTimerActive(this->TimerHandle))
-		GetWorld()->GetTimerManager().ClearTimer(this->TimerHandle);
-	
-	if (InSkillContext.bActivated || !InSkillContext.SkillInstance.IsValid()) return;
-			
-	// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
-	
-	FHitResult HitCursor = GetAimTarget(InSkillContext, AimRadius);
-	if (AActor* HittedActor = HitCursor.GetActor())
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
+		// 1. Se o timer ainda existir (porque o jogador soltou o botão antes do tempo), limpe-o
+		if (World->GetTimerManager().IsTimerActive(this->TimerHandle))
+			World->GetTimerManager().ClearTimer(this->TimerHandle);
+		
+		if (InSkillContext.bActivated || !InSkillContext.SkillInstance.IsValid()) return;
+				
+		// Captura as informacoes do cursor do mouse, como a localizacao e o SurfaceNormal
+		
+		FHitResult HitCursor = GetAimTarget(InSkillContext, AimRadius);
+		if (AActor* HittedActor = HitCursor.GetActor())
 		{
-			InSkillContext.EntityOnEndLocation = Entity;
-		} else
-		{
-			InSkillContext.EntityOnEndLocation = nullptr;
+			if (AEntityClass* Entity = Cast<AEntityClass>(HittedActor))
+			{
+				InSkillContext.EntityOnEndLocation = Entity;
+			} else
+			{
+				InSkillContext.EntityOnEndLocation = nullptr;
+			}
 		}
+		
+		InSkillContext.EndSurfaceNormal = HitCursor.ImpactNormal;
+		InSkillContext.EndLocation = HitCursor.ImpactPoint;
+		
+		InSkillContext.Direction = (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal();
+		InSkillContext.ReleasedTime = World->GetTimeSeconds();
+		InSkillContext.HoldDuration = InSkillContext.ReleasedTime - InSkillContext.CastTime;
 	}
-	
-	InSkillContext.EndSurfaceNormal = HitCursor.ImpactNormal;
-	InSkillContext.EndLocation = HitCursor.ImpactPoint;
-	
-	InSkillContext.Direction = (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal();
-	InSkillContext.ReleasedTime = GetWorld()->GetTimeSeconds();
-	InSkillContext.HoldDuration = InSkillContext.ReleasedTime - InSkillContext.CastTime;
 }
 
 
 
 
-FHitResult UActivationFeature::GetAimTarget(FSkillContext& InContext, float Sensibility) const
+FHitResult UActivationFeature::GetAimTarget(FSkillContext& InContext, float InAimRadius) const
 {
 	FHitResult HitResult;
-	
-	if (APlayerClass* Char = Cast<APlayerClass>(InContext.EntityOwner.Get()))
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		FVector Start = Char->GetCameraComponent()->GetComponentLocation();
-		FVector End = Start + Char->GetCameraComponent()->GetForwardVector() * 50000;
-		FCollisionQueryParams CollisionParams;
-		CollisionParams.AddIgnoredActor(Char);
-		
-		GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::MakeFromRotator(FRotator::ZeroRotator),ECollisionChannel::ECC_Visibility, FCollisionShape::MakeSphere(Sensibility), CollisionParams);
+		if (APlayerClass* Char = Cast<APlayerClass>(InContext.EntityOwner.Get()))
+		{
+			FVector Start = Char->GetCameraComponent()->GetComponentLocation();
+			FVector End = Start + Char->GetCameraComponent()->GetForwardVector() * 50000;
+			FCollisionQueryParams CollisionParams;
+			CollisionParams.AddIgnoredActor(Char);
+			
+			World->SweepSingleByChannel(HitResult, Start, End, FQuat::MakeFromRotator(FRotator::ZeroRotator),ECollisionChannel::ECC_Visibility, FCollisionShape::MakeSphere(InAimRadius), CollisionParams);
+		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("LOCATIONN: %s"), *HitResult.Location.ToString())
-	UE_LOG(LogTemp, Warning, TEXT("IMPACT POINTT: %s"), *HitResult.ImpactPoint.ToString())
-	
 	return HitResult;
 }
 
 FHitResult UActivationFeature::GetCursorLocation(FSkillContext& InContext) const
 {
-	APlayerController* PC = Cast<APlayerController>(GetWorld()->GetFirstPlayerController());
-	
 	FHitResult HitCursor;
-	
-	// Captura a posição do mouse no mundo
-	if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitCursor))
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		HitCursor.Location.Z += 10;
+		APlayerController* PC = Cast<APlayerController>(World->GetFirstPlayerController());
+		
+		
+		// Captura a posição do mouse no mundo
+		if (PC->GetHitResultUnderCursor(ECC_Visibility, false, HitCursor))
+		{
+			HitCursor.Location.Z += 10;
+		}
 	}
 	return HitCursor;
 }
 
-void UActivationFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
+void UActivationFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
 	Super::CleanNiagara(SpawnedNiagaraComponents);
 }

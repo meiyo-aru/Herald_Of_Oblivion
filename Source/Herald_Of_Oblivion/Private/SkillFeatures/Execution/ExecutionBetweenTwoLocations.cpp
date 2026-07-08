@@ -12,6 +12,11 @@
 #include "Core/SkillInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 
+void UExecutionBetweenTwoLocations::LoadFXSync()
+{
+	Super::LoadFXSync();
+}
+
 void UExecutionBetweenTwoLocations::Initialize(USkillInstance* Owner)
 {
 	Super::Initialize(Owner);
@@ -21,7 +26,7 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 {
 	Super::Execute(InSkillContext);
 	
-	AEntityClass* EntityOwner = InSkillContext.EntityOwner.Get();
+	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 	if (!IsValid(EntityOwner))
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionEffectBetweenTwoLocations::Execute - EntityOwner invalido."));
@@ -35,7 +40,13 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 		return;
 	}
 	
-	if (UNiagaraSystem* VFX = ExecutionEffect.Get())
+	UNiagaraSystem* VFX;
+	if (LoadedExecutionEffect) 
+		VFX = LoadedExecutionEffect;
+	else 
+		VFX = ExecutionEffect.Get();
+
+	if (VFX)
 	{
 		const FVector SurfaceNormal = InSkillContext.StartSurfaceNormal;
 	
@@ -54,14 +65,24 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 		SkillActor->NiagaraComponent->SetAsset(VFX);
 		SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
 		
-		
+		TArray<FOverlapResult> OverlapResults;
 		
 		if (bUseStartLocation && bUseEndLocation)
 		{
+			SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(InSkillContext.StartLocation, InSkillContext.EndLocation));
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), InSkillContext.StartLocation);
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.EndLocation);
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal());
-
+			FVector Direction = (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal();
+			SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), Direction);
+			
+			float Distance = FVector::Dist(InSkillContext.StartLocation, InSkillContext.EndLocation) + 30;
+			
+			FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+			
+			FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
+			FVector Center = InSkillContext.StartLocation + ((Distance / 2) * Direction);
+			
+			OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
 		} else if (!bUseStartLocation && !bUseEndLocation)
 		{
 			if (APlayerClass* Char = Cast<APlayerClass>(EntityOwner))
@@ -73,6 +94,18 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 				FVector StartLocation = SpawnLocation - RightVector/2;
 				FVector EndLocation = SpawnLocation + RightVector/2;
 				
+				FVector Direction = (EndLocation - StartLocation).GetSafeNormal();
+				
+				float Distance = FVector::Dist(StartLocation, EndLocation) + 30;
+			
+				FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+			
+				FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
+				FVector Center = StartLocation + ((Distance / 2) * Direction);
+			
+				OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
+				
+				SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(StartLocation, EndLocation));
 				SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), StartLocation);
 				SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), EndLocation);
 				SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (EndLocation - StartLocation).GetSafeNormal());
@@ -83,15 +116,26 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 			if (bUseRight)
 			{
 				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-					StartLocation = Actor->GetMesh()->GetSocketLocation(FName("CastSocket"));
-				else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightWeaponSocket"));
+					StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+				else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));
 			} else
 			{
 				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-					StartLocation = Actor->GetMesh()->GetSocketLocation(FName("CastSocket"));
-				else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftWeaponSocket"));
+					StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+				else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));
 			}
 			
+			FVector Direction = (InSkillContext.EndLocation - StartLocation).GetSafeNormal();
+				
+			float Distance = FVector::Dist(StartLocation, InSkillContext.EndLocation) + 30;
+			
+			FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+			
+			FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
+			FVector Center = StartLocation + ((Distance / 2) * Direction);
+			
+			OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
+			SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(StartLocation, InSkillContext.EndLocation));
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), StartLocation);
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.EndLocation);
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (InSkillContext.EndLocation - StartLocation).GetSafeNormal());
@@ -101,23 +145,40 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 			if (bUseRight)
 			{
 				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-					EndLocation = Actor->GetMesh()->GetSocketLocation(FName("CastSocket"));
-				else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightWeaponSocket"));					
+					EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+				else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));					
 			} else
 			{
 				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-					EndLocation = Actor->GetMesh()->GetSocketLocation(FName("CastSocket"));
-				else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightWeaponSocket"));					
+					EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+				else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));					
 			}
+			
+			FVector Direction = (EndLocation - InSkillContext.StartLocation).GetSafeNormal();
+				
+			float Distance = FVector::Dist(InSkillContext.StartLocation, EndLocation) + 30;
+			
+			FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+			
+			FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
+			FVector Center = InSkillContext.StartLocation + ((Distance / 2) * Direction);
+			
+			OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
+			SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(InSkillContext.StartLocation, EndLocation));
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), EndLocation);
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.StartLocation);
 			SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (InSkillContext.StartLocation - EndLocation).GetSafeNormal());
 		}
+		
+		if (!OverlapResults.IsEmpty())
+		{
+			InSkillContext.HitOverlapResult = FHitOverlapResult(OverlapResults);
+			InSkillContext.SkillInstance->OnSkillHitDelegate.Broadcast(InSkillContext);
+		}
 	}
 }
 
-void UExecutionBetweenTwoLocations::CleanNiagara(
-	TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
+void UExecutionBetweenTwoLocations::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
 	Super::CleanNiagara(SpawnedNiagaraComponents);
 }

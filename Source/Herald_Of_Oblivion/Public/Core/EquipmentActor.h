@@ -26,5 +26,6 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	
+	// Prepara o Actor para ir para o Pool
 	virtual void PrepareForPooling() override;
 };

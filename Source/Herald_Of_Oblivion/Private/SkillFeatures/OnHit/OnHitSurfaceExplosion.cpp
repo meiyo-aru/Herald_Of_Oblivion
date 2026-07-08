@@ -6,10 +6,18 @@
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
 #include "Data/SkillDataAsset.h"
-#include "Core/SkillInstance.h"
+#include "Sound/SoundCue.h"
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/KismetMathLibrary.h"
+
+void UOnHitSurfaceExplosion::LoadFXSync()
+{
+	Super::LoadFXSync();
+	
+	LoadedOnHitEffect = OnHitEffect.LoadSynchronous();
+	LoadedOnHitSound = OnHitSound.LoadSynchronous();
+}
 
 void UOnHitSurfaceExplosion::Initialize(USkillInstance* Owner)
 {
@@ -20,11 +28,17 @@ void UOnHitSurfaceExplosion::Execute(FSkillContext& InSkillContext)
 {
 	Super::Execute(InSkillContext);
 	
-	if (UNiagaraSystem* VFX = OnHitEffect.Get())
+	UNiagaraSystem* VFX;
+	if (LoadedOnHitEffect) 
+		VFX = LoadedOnHitEffect;
+	else 
+		VFX = OnHitEffect.Get();
+
+	if (VFX)
 	{
-		if (InSkillContext.HitResult.bBlockingHit)
+		if (InSkillContext.HitOverlapResult.HitResult.bBlockingHit)
 		{
-			UNiagaraComponent* Niagara = SpawnVFXAtLocation(VFX, UKismetMathLibrary::MakeRotFromZ(InSkillContext.HitResult.ImpactNormal), InSkillContext.HitResult.ImpactPoint, InSkillContext);
+			UNiagaraComponent* Niagara = SpawnVFXAtLocation(VFX, UKismetMathLibrary::MakeRotFromZ(InSkillContext.HitOverlapResult.HitResult.ImpactNormal), InSkillContext.HitOverlapResult.HitResult.ImpactPoint, InSkillContext);
 			Niagara->SetFloatParameter(FName("ExplosionRadius"), ExplosionRadius);
 			Niagara->SetFloatParameter(FName("ExplosionTemperature"), ExplosionTemperature);
 			Niagara->SetVectorParameter(FName("ExplosionIntensityScale"), ExplosionIntensityScale);

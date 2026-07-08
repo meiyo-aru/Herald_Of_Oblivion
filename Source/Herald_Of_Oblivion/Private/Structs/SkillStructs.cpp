@@ -7,29 +7,27 @@
 // Implementação do construtor padrão
 FSkillContext::FSkillContext() 
 	: SkillInstance(nullptr)
-	, EntityOwner(nullptr)
-	, HitOverlapResultType(EHitOverlapResultType::None)
-{}
+	, EntityOwner(nullptr){}
 
 // Implementação do construtor com parâmetros
 FSkillContext::FSkillContext(USkillInstance* InSkillInstance, AEntityClass* InOwner)
 {
 	this->SkillInstance = InSkillInstance;
 	this->EntityOwner = InOwner;
-	this->HitOverlapResultType = EHitOverlapResultType::None;
 }
 
 void FSkillContext::Reset()
 {
 	SkillActor = nullptr;
+	SkillStage = ESkillStage::None;
 	Direction = FVector::ZeroVector;
 	EntityOnStartLocation = nullptr;
-	HitOverlapResultType = EHitOverlapResultType::None;
-	HitResult = FHitResult();
-	OverlapResult = FOverlapResult();
+	EntityOnEndLocation = nullptr;
 	bActivated = false;
 	StartLocation = FVector::ZeroVector;
 	EndLocation = FVector::ZeroVector;
+	StartSurfaceNormal = FVector::ZeroVector;
+	EndSurfaceNormal = FVector::ZeroVector;
 	CastTime = 0.0f;
 	ReleasedTime = 0.0f;
 	HoldDuration = 0.0f;

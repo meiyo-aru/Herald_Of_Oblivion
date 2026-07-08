@@ -12,7 +12,6 @@
 
 USkillDataAsset::USkillDataAsset()
 {
-	
 }
 // Recebe uma entidade e cria uma instancia da habilidade para ela
 USkillInstance* USkillDataAsset::CreateInstance(AEntityClass* Owner)
@@ -38,7 +37,7 @@ USkillInstance* USkillDataAsset::CreateInstance(AEntityClass* Owner)
 	}
 	
 	Instance->Initialize(Owner,
-	                     GetPrimaryAssetId(),
+	                     this,
 	                     DuplicateObject<UActivationFeature>(this->ActivationFeature, Instance), 
 	                     DuplicateObject<UExecutionFeature>(this->ExecutionFeature, Instance),
 	                     DuplicatedArray);
@@ -46,6 +45,7 @@ USkillInstance* USkillDataAsset::CreateInstance(AEntityClass* Owner)
 }
 
 // Função para que sempre que a especializacao for alterada no editor o valor padrao do modificador seja alterado também
+/*
 #if WITH_EDITOR
 void USkillDataAsset::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 {
@@ -75,3 +75,4 @@ void USkillDataAsset::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 	}
 }
 #endif
+*/

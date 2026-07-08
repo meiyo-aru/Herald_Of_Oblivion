@@ -4,14 +4,19 @@
 #include "SkillFeatures/Execution/ExecutionUniqueSpawnAtLocationFeature.h"
 
 #include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 #include "Core/EntityClass.h"
 #include "Core/SkillActor.h"
-#include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
 #include "SkillFeatures/Execution/ExecutionSpawnProjectileFeature.h"
 #include "Kismet/KismetMathLibrary.h"
 
-void UExecutionUniqueSpawnAtLocationFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
+void UExecutionUniqueSpawnAtLocationFeature::LoadFXSync()
+{
+	Super::LoadFXSync();
+}
+
+void UExecutionUniqueSpawnAtLocationFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
 	Super::CleanNiagara(SpawnedNiagaraComponents);
 }
@@ -51,7 +56,11 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 		return;
 	}
 	
-	UNiagaraSystem* VFX = this->ExecutionEffect.Get();
+	UNiagaraSystem* VFX;
+	if (LoadedExecutionEffect) 
+		VFX = LoadedExecutionEffect;
+	else 
+		VFX = ExecutionEffect.Get();
 	
 	if (!VFX)
 	{
@@ -59,7 +68,7 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 		return;
 	}
 	
-	AEntityClass* EntityOwner = InSkillContext.EntityOwner.Get();
+	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 	if (!EntityOwner)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation - EntityOwner invalido."));
@@ -92,15 +101,13 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 
 	float HitSphereRadius = this->CollisionRadius * FMath::Clamp(InSkillContext.ChargeRatio, 0.2f, 1.0f);
 
-	TArray<FOverlapResult> OutOverlaps = MakeHitSphere(HitSphereRadius, InSkillContext, SpawnLocation);
+	TArray<FOverlapResult> OutOverlaps = MakeOverlapSphere(HitSphereRadius, InSkillContext, SpawnLocation);
 	
-	for (FOverlapResult OutOverlap : OutOverlaps)
+	if (!OutOverlaps.IsEmpty())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Colidiu com %s"), *OutOverlap.GetActor()->GetName());
-		InSkillContext.HitOverlapResultType = EHitOverlapResultType::Overlap;
-		InSkillContext.OverlapResult = OutOverlap;
+		InSkillContext.HitOverlapResult = FHitOverlapResult(OutOverlaps);
 		SkillInstance->OnSkillHitDelegate.Broadcast(InSkillContext);
-	}	
+	}
 }
 
 

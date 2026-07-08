@@ -2,8 +2,16 @@
 
 
 #include "SkillFeatures/Execution/ExecutionFeature.h"
+#include "NiagaraSystem.h"
+#include "Sound/SoundCue.h"
 
 #include "Core/SkillInstance.h"
+
+void UExecutionFeature::LoadFXSync()
+{
+	LoadedExecutionEffect = ExecutionEffect.LoadSynchronous();
+	LoadedExecutionSound = ExecutionSound.LoadSynchronous();
+}
 
 void UExecutionFeature::Initialize(USkillInstance* Owner)
 {
@@ -19,7 +27,7 @@ void UExecutionFeature::Execute(FSkillContext& InSkillContext)
 	InSkillContext.SkillStage = ESkillStage::InExecution;
 }
 
-void UExecutionFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
+void UExecutionFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
 	Super::CleanNiagara(SpawnedNiagaraComponents);
 }

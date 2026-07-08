@@ -23,11 +23,17 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	
+	// O StaticMesh
+	UPROPERTY(VisibleAnywhere, Category="Properties")
+	TObjectPtr<UStaticMesh>	StaticMesh;
+	
+	// O componente de StaticMesh do Actor
 	UPROPERTY(VisibleAnywhere, Category="Properties")
 	TObjectPtr<UStaticMeshComponent> StaticMeshComponent;
 	
+	// Retorna o Mesh
 	TObjectPtr<UStaticMeshComponent> GetMesh() const {return StaticMeshComponent;}
 
+	// Prepara para enviar para o Pool
 	virtual void PrepareForPooling();
-	
 };

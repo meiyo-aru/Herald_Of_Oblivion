@@ -7,6 +7,7 @@
 #include "Enumerators/SkillEnums.h"
 #include "Structs/SkillStructs.h"
 #include "Engine/EngineTypes.h"
+#include "Structs/EntityStructs.h"
 #include "SkillDataAsset.generated.h"
 
 /**
@@ -16,6 +17,7 @@
  * As instâncias utilizam os dados do DataAsset para trabalhar
  */
 
+class UEffectDataAsset;
 class UOnHitFeature;
 class USpecializationDataAsset;
 class ASkillActor;
@@ -36,10 +38,10 @@ public:
 	// void PostEditChangeProperty(FPropertyChangedEvent& e);
 	// void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent);
 
-#if WITH_EDITOR // Compila este código apenas no editor
+/*#if WITH_EDITOR // Compila este código apenas no editor
 		// Chamado quando uma propriedade é alterada no editor
 		virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& e) override;
-	#endif
+	#endif*/
 
 	FPrimaryAssetId GetPrimaryAssetId() const {
 		return FPrimaryAssetId("Skill", GetFName());
@@ -74,22 +76,13 @@ public:
 	
 	// ESkillTagsEnum Tags;
 	
-	// FName da especializacao, usado para filtrar skills pela especializacao
-	UPROPERTY(AssetRegistrySearchable)
-	FName SpecializationName;
-	
 	// A especialização(classe) da habilidade, exemplo: Guerreiro, Mago.
-	UPROPERTY(EditAnywhere, Category="Properties", meta = (AssetBundle = "UI"))
-	USpecializationDataAsset* Specialization;
+	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable, meta = (AssetBundle = "UI"))
+	ESpecializationEnum Specialization;
 	
 	// Descrição da habilidade
 	UPROPERTY(EditAnywhere, Category="UI")
 	FText Description;
-	
-	// Um Array contendo referências para as classes de todos os efeitos causados pela habilidade,
-	// por exemplo: dano físico, dano de fogo, queimadura, congelamento, etc.
-	// UPROPERTY(EditAnywhere, Category="Skill Properties")
-	// TArray<TSoftObjectPtr<UEffect>> Effects;
 	
 	// O custo de uso da habilidade.
 	UPROPERTY(EditAnywhere, Category="Properties")
@@ -123,13 +116,13 @@ public:
 	// O icone da habilidade
 	UPROPERTY(EditAnywhere, Category="UI", meta = (AssetBundles = "UI"))
 	TSoftObjectPtr<UTexture2D> Icon;
-
+	
 	// Features da skill
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	UActivationFeature* ActivationFeature;
+	TObjectPtr<UActivationFeature> ActivationFeature;
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	UExecutionFeature* ExecutionFeature;
+	TObjectPtr<UExecutionFeature> ExecutionFeature;
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	TArray<UOnHitFeature*> OnHitFeature;
+	TArray<TObjectPtr<UOnHitFeature>> OnHitFeature;
 
 };

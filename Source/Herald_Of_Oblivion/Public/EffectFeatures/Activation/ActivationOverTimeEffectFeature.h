@@ -14,4 +14,18 @@ UCLASS()
 class HERALD_OF_OBLIVION_API UActivationOverTimeEffectFeature : public UActivationEffectFeature
 {
 	GENERATED_BODY()
+	
+public:
+	virtual void Init(FHitOverlapResult& HitOverlapResult) override;
+	
+	virtual void Execute(FHitOverlapResult& HitOverlapResult) override;
+	
+	FTimerHandle TimerHandle;
+	
+	UPROPERTY(EditAnywhere, Category="Properties")
+	int8 ActivationsPerSecond = 1;
+	int8 TicksCount = 0;
+	
+	UPROPERTY(EditAnywhere, Category="Properties")
+	float Duration = 2.0f;
 };

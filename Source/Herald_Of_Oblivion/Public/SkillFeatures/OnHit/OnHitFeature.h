@@ -16,6 +16,9 @@ class HERALD_OF_OBLIVION_API UOnHitFeature : public USkillFeature
 	GENERATED_BODY()
 	
 public:
+	// Carrega os FX de forma assincrona ou não
+	virtual void LoadFXSync();
+
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 	

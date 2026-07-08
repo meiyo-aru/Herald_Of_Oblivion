@@ -2,3 +2,7 @@
 
 
 #include "EffectFeatures/Execution/ExecutionEffectFeature.h"
+
+void UExecutionEffectFeature::Execute(const FHitOverlapResult& HitOverlapResult)
+{
+}

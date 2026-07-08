@@ -7,11 +7,9 @@
 
 /**
  * USkillFeature
- * Classe pai de todas as features. É um UObject editável no inspetor e instanciável.
+ * Classe pai de todas as features de habilidade. É um UObject editável no editor e instanciável.
  * Uma feature são objetos de lógica e comportamentos essenciais para o funcionamento das habilidades
  * As features se comunicam entre si através de Delegates disparados pela instância de skill da qual pertencem.
- * Uma feature pode por exemplo disparar um Delegate específico da sua instância para que outras features
- * saibam que ela terminou seu trabalho e possam processar o resultado
  */
 
 class UNiagaraSystem;
@@ -51,25 +49,8 @@ public:
 	UPROPERTY()
 	FSkillContext Context;
 	
-	// // A entidade que castou a habilidade
-	// UPROPERTY()
-	// AEntityClass* EntityOwner;
-	//
-	// // O data asset da habilidade
-	// UPROPERTY()
-	// const USkillDataAsset* SkillDataAsset;
-	//
-	// // A instancia da habilidade
-	// UPROPERTY()
-	// USkillInstance* SkillInstance;
-	
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) {};
-
-	// Lógica de ativação (opcional para features do tipo activation)
-	virtual void StartActivation(FSkillContext& InSkillContext) {};
-	virtual void CompleteActivation(FSkillContext& InSkillContext) {};
-	
 
 	// Para efeitos de habilidades em que nao quero criar um actor, apenas o niagara é necessário e ele precisa estar anexado a algum socket
 	UNiagaraComponent* SpawnAuraVFX(UNiagaraSystem* VFX, AEntityClass* InEntityOwner,
@@ -78,10 +59,14 @@ public:
 	ASkillActor* SpawnSkillActor(AEntityClass* InEntityOwner, FTransform SpawnTransform);
 	UNiagaraComponent* SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotator Rotation, FVector Location, FSkillContext& InSkillContext);
 
-	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents);
-	virtual TArray<FOverlapResult> MakeHitSphere(float Radius, FSkillContext& InSkillContext, FVector Location);
-	virtual void OnHitEntity(FSkillContext& InSkillContext);
-
+	// Limpa o Niagara
+	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents);
+	
+	// Cria uma caixa de overlap
+	TArray<FOverlapResult> MakeOverlapBox(FVector Size, FQuat Rotation, FSkillContext& InSkillContext, FVector Center);
+	// Cria uma esfera de overlap
+	virtual TArray<FOverlapResult> MakeOverlapSphere(float Radius, FSkillContext& InSkillContext, FVector Center);
+	
 	FTimerHandle CleanNiagaraTimerHandle;
 	
 	UPROPERTY(EditAnywhere, Category = "Properties")
@@ -94,17 +79,19 @@ public:
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
 	float RadiusCollision = 0.0f;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
-	bool bGenerateOverlapEvents = false;
+	bool bGenerateOverlapEvents = true;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
-	bool bGenerateHitEvents = false;
+	bool bGenerateHitEvents = true;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
-	bool bNotifyRigidBodyCollision = false;
+	bool bNotifyRigidBodyCollision = true;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
-	TEnumAsByte<ECollisionEnabled::Type> CollisionEnabled = ECollisionEnabled::NoCollision;
+	TEnumAsByte<ECollisionEnabled::Type> CollisionEnabled = ECollisionEnabled::QueryAndPhysics;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
-	TEnumAsByte<ECollisionResponse> PawnCollision = ECR_Ignore;
+	TEnumAsByte<ECollisionChannel> CollisionObjectType = ECC_GameTraceChannel1;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
-	TEnumAsByte<ECollisionResponse> WorldStaticCollision = ECR_Ignore;
+	TEnumAsByte<ECollisionResponse> PawnCollision = ECR_Overlap;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
-	TEnumAsByte<ECollisionResponse> WorldDynamicCollision = ECR_Ignore;
+	TEnumAsByte<ECollisionResponse> WorldStaticCollision = ECR_Block;
+	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
+	TEnumAsByte<ECollisionResponse> WorldDynamicCollision = ECR_Block;
 };

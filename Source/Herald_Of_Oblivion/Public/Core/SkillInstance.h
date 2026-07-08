@@ -42,10 +42,12 @@ public:
 	void CastSkill();
 	void GoOnCooldown();
 	
+	FPrimaryAssetId GetAssetId() const {return DataAsset->GetPrimaryAssetId();};
+	
 	// Reseta as propriedades para que possa ser guardada na Pool
 	void PrepareForPooling();
 
-	
+	// Delegates essenciais para o funcionamento das features
 	FOnSkillCast OnSkillCastDelegate;
 	FOnSkillReleased OnSkillReleasedDelegate;
 	FOnSkillActivate OnSkillActivateDelegate;
@@ -61,7 +63,7 @@ private:
 	
 	// Ponteiro para o USkillDataAsset da habilidade
 	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Skill"))
-	FPrimaryAssetId AssetId;
+	TObjectPtr<USkillDataAsset> DataAsset;
 	
 	// Level da habilidade
 	UPROPERTY(EditAnywhere, Category="Properties")
@@ -88,34 +90,26 @@ private:
 	float ForceMultiplier = 1.0;
 	
 public:
-	// Handles SEPARADOS para controle independente
-	TSharedPtr<FStreamableHandle> EntityOwnerAuraHandle;      // Aura
-	TSharedPtr<FStreamableHandle> WeaponAuraHandle;      // Aura
-	TSharedPtr<FStreamableHandle> ActivationHandle;      // Activation e execution
-	/*
-	TSharedPtr<FStreamableHandle> OnHitHandle;   // OnHit
-	*/
+	// Handle dos FX das Skills, ele segura os efeitos na memória
+	TSharedPtr<FStreamableHandle> SkillsHandle;
 	
-	// Features da skill
+	// Features da skill duplicadas do DataAsset
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	UExecutionFeature* ExecutionFeature;
+	TObjectPtr<UExecutionFeature> ExecutionFeature;
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	UActivationFeature* ActivationFeature;
+	TObjectPtr<UActivationFeature> ActivationFeature;
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	TArray<UOnHitFeature*> OnHitFeature;
+	TArray<TObjectPtr<UOnHitFeature>> OnHitFeature;
 	
 	UPROPERTY(VisibleAnywhere, Category="Properties")
 	FSkillContext CurrentContext;
 
 	// Método para inicializar a instancia de skill
-	virtual void Initialize(AEntityClass* InOwner, FPrimaryAssetId InAssetId, UActivationFeature* InActivationFeature, UExecutionFeature*
+	virtual void Initialize(AEntityClass* InOwner, USkillDataAsset* DataAsset, UActivationFeature* InActivationFeature, UExecutionFeature*
 	                        InExecutionFeature, TArray<UOnHitFeature*> InOnHitFeature);
 	
 	// Método para inicializar as features
-	virtual void InitializeFeatures();
-	
-	// Retorna o DataAsset
-	FPrimaryAssetId GetAssetId() const {return AssetId;}
+	virtual void Prepare();
 	
 	// Retorna a entidade dona da instancia de skill
 	const AEntityClass* GetOwner() const
@@ -125,12 +119,12 @@ public:
 		else return nullptr;
 	};
 	
+	// Getters
 	const bool GetInCooldown() const {return this->bInCooldown;};
 	const bool GetIsCasting() const {return this->bIsCasting;};
-	const void FinishCast() {this->bIsCasting = false;};
 	
-	void ReleaseActivationHandle();
-	void ReleaseAuraHandle();
+	// Finaliza o Cast
+	const void FinishCast() {this->bIsCasting = false;};
 	
 	UActivationFeature* GetActivationFeature() const {return this->ActivationFeature;};
 	UExecutionFeature* GetExecutionFeature() const {return this->ExecutionFeature;};

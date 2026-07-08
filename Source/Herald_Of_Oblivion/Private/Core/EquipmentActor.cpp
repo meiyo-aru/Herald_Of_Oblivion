@@ -3,6 +3,8 @@
 
 #include "Core/EquipmentActor.h"
 
+#include "Enumerators/ItemEnums.h"
+
 // Sets default values
 AEquipmentActor::AEquipmentActor()
 {

@@ -44,21 +44,28 @@ public:
 	UPROPERTY(EditAnywhere, Category="Thorn")
 	float MaxSpacingBetweenThorns = 60.0f;
 	
+	// Cada key é o id de uma particúla, e a Struct tem como função registrar as entidades que colidiram com a partícula
 	TMap<int32, FEntityArrayWrapper> ParticlesIDCollided;
 	
-	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents) override;
-	virtual void Initialize(USkillInstance* Owner) override;
-	virtual void Execute(FSkillContext& InSkillContext) override;
-	void SpawnThorn(FSkillContext& InSkillContext);
-	void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext);
-	// Executa alguma lógica nas particulas do niagara
-	/*
-	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
-	*/
+	// Limpa o Niagara
+	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents) override;
 	
+	// Carrega os FX de forma assincrona ou não
+	virtual void LoadFXSync() override;
+
+	// Inicializa com os valores
+	virtual void Initialize(USkillInstance* Owner) override;
+	// Executa a lógica principal
+	virtual void Execute(FSkillContext& InSkillContext) override;
+	// Spawna os espinhos
+	void SpawnThorn(FSkillContext& InSkillContext);
+	// Executa lógica para cada espinho gerado
+	void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext);
+	
+	// Checa a superfície na mira do jogador
 	TArray<FHitResult> CheckSurfaceInAim(FSkillContext& InSkillContext, TArray<ESurfaceType>& InValidSurfaces);
+	// Gera Linetraces paralelos em volta de uma direção
 	TArray<FHitResult> LineTraceAroundLocation(FVector StartLocation, FVector EndLocation,
 											   FCollisionQueryParams CollisionParams,
 											   TArray<ESurfaceType>& InValidSurfaces);
-
 };

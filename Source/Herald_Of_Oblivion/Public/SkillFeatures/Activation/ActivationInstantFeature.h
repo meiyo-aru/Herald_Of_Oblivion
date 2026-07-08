@@ -19,7 +19,10 @@ UCLASS()
 class HERALD_OF_OBLIVION_API UActivationInstantFeature : public UActivationFeature
 {
 	GENERATED_BODY()
-	
+public:
+	// Carrega os FX de forma assincrona ou não
+	virtual void LoadFXSync() override;
+
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 	

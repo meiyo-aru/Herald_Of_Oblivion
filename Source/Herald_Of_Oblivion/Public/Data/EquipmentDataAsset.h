@@ -26,15 +26,19 @@ public:
 		return FPrimaryAssetId("Equipment", GetFName());
 	}
 
-	UEquipmentInstance* GetInstance(AEntityClass* InEntityOwner, FItemRarityStruct InRarity, int8 InLevel,
-	                                   float InAmount);
+	UEquipmentDataAsset();
+	
+	// Retorna uma instância devidamente inicializada
+	UEquipmentInstance* GetInstance(FItemRarityStruct InRarity, int8 InLevel,
+	                                float InAmount, AEntityClass* InEntityOwner = nullptr);
+	
+	// Retorna o nome do socket que o equipamento deve usar
+	FName GetEquipmentSocketName();
 	
 	// Define se haverá um componente de colisão
 	UPROPERTY(EditAnywhere, Category="Collision")
 	bool bHaveCollisionComponent = false;
-
-	bool bEquipment = true;
-
+	
 	// Tamanho da cápsula de colisão
 	UPROPERTY(EditAnywhere, Category="Collision")
 	FVector CollisionSize = FVector::ZeroVector; 
@@ -51,6 +55,7 @@ public:
 	UPROPERTY(EditAnywhere, Category="Properties")
 	EEquipmentSlot EquipmentSlot = EEquipmentSlot::None;
 	
+	// Feature que executa lógica ao atingir ou dar overlap em algo
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	TArray<TObjectPtr<UOnHitFeature>> OnHitFeature;
+	TArray<TObjectPtr<UOnHitFeature>> OnHitFeatures;
 };

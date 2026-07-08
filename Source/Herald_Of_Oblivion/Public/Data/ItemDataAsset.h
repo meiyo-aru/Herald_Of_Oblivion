@@ -23,11 +23,8 @@ public:
 		return FPrimaryAssetId("Item", GetFName());
 	}
 	
-	UPROPERTY()
-	bool bEquipment = false;
-	
 	// O tipo do item
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="!bEquipment", EditConditionHides))
+	UPROPERTY(EditAnywhere, Category="Properties")
 	EItemType ItemType = EItemType::None;
 
 	// O nome do item

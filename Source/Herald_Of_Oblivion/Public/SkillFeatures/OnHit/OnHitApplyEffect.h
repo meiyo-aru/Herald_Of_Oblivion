@@ -17,12 +17,15 @@ class HERALD_OF_OBLIVION_API UOnHitApplyEffect : public UOnHitFeature
 {
 	GENERATED_BODY()
 public:
+	// Carrega os FX de forma assincrona ou não
+	virtual void LoadFXSync() override;
+
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 	
 	// Realiza operações essenciais e comuns às classes filhas
 	virtual void Execute(FSkillContext& InSkillContext) override;
-
+	
 	UPROPERTY(EditAnywhere, Category="Properties")
-	UEffectDataAsset* EffectDataAsset = nullptr;
+	TArray<TObjectPtr<UEffectDataAsset>> OnHitEffects;
 };

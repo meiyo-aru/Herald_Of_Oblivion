@@ -9,6 +9,11 @@
 #include "Engine/AssetManager.h"
 #include "Structs/SkillStructs.h"
 
+void UActivationInstantFeature::LoadFXSync()
+{
+	Super::LoadFXSync();
+}
+
 void UActivationInstantFeature::Initialize(USkillInstance* Owner)
 {
 	Super::Initialize(Owner);
@@ -18,7 +23,8 @@ void UActivationInstantFeature::StartActivation(FSkillContext& InSkillContext)
 {
 	Super::StartActivation(InSkillContext);
 
-	const FHitResult HitCursor = GetCursorLocation(InSkillContext);
+	const FHitResult HitCursor = GetAimTarget(InSkillContext, AimRadius);
+	
 	InSkillContext.StartSurfaceNormal = HitCursor.ImpactNormal;
 	InSkillContext.EndSurfaceNormal = HitCursor.ImpactNormal;
 	InSkillContext.StartLocation = HitCursor.ImpactPoint;
@@ -35,17 +41,25 @@ void UActivationInstantFeature::StartActivation(FSkillContext& InSkillContext)
 
 		const USkillDataAsset* SkillDataAsset = AssetManager->Get().GetPrimaryAssetObject<USkillDataAsset>(SkillInstance->GetAssetId());
 		
-		if (AEntityClass* EntityOwner = InSkillContext.EntityOwner.Get())
+		if (AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get()))
 		{
-			float Cast = SkillDataAsset->CastTime * ((SkillDataAsset->MultiplierReduceCastTime * EntityOwner->GetSimbolicAttribute(SkillDataAsset->ReduceCastTimeAttribute).GetAttributeValue())/100);
-			
-			UE_LOG(LogTemp, Log, TEXT("CastTime: %f"), Cast);
-			
-			GetWorld()->GetTimerManager().SetTimer(CastTimerHandle, [&InSkillContext]
+			if (FAttribute* AttributePtr = EntityOwner->GetSimbolicAttribute(SkillDataAsset->ReduceCastTimeAttribute))
 			{
-				InSkillContext.bActivated = true;
-				InSkillContext.SkillInstance->OnSkillActivateDelegate.Broadcast(InSkillContext);
-			}, Cast, false);
+				FAttribute Attribute = *AttributePtr;
+				
+				float Cast = SkillDataAsset->CastTime * ((SkillDataAsset->MultiplierReduceCastTime * Attribute.GetAttributeValue())/100);
+				
+				UE_LOG(LogTemp, Log, TEXT("CastTime: %f"), Cast);
+				
+				if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+				{
+					World->GetTimerManager().SetTimer(CastTimerHandle, [&InSkillContext]
+					{
+						InSkillContext.bActivated = true;
+						InSkillContext.SkillInstance->OnSkillActivateDelegate.Broadcast(InSkillContext);
+					}, Cast, false);
+				};
+			}			
 		}
 	}
 	

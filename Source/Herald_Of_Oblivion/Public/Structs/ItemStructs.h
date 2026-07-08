@@ -4,6 +4,7 @@
 #include "Enumerators/ItemEnums.h"
 #include "ItemStructs.generated.h"
 
+// Guarda a raridade de um item e o modificador numerico correspondente.
 USTRUCT(BlueprintType)
 struct FItemRarityStruct
 {
@@ -15,6 +16,7 @@ struct FItemRarityStruct
 	UPROPERTY(EditAnywhere)
 	float RarityModifier = 0.0f;
 	
+	// Inicializa a raridade e calcula o modificador usado no balanceamento do item.
 	FItemRarityStruct(EItemRarityEnum InRarity = EItemRarityEnum::None)
 	{
 		Rarity = InRarity;

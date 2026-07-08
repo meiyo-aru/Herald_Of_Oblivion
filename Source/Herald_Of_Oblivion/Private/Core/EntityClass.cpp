@@ -3,15 +3,17 @@
 
 #include "Core/EntityClass.h"
 
-#include "Character/PlayerClass.h"
 #include "Components/CapsuleComponent.h"
+#include "Core/EffectInstance.h"
 #include "Core/EquipmentInstance.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
-#include "Data/SpecializationDataAsset.h"
+#include "Data/EffectDataAsset.h"
 #include "Data/EquipmentDataAsset.h"
 #include "Engine/AssetManager.h"
-#include "SkillFeatures/Activation/ActivationChargeFeature.h"
+#include "SkillFeatures/Activation/ActivationFeature.h"
+#include "SkillFeatures/Execution/ExecutionFeature.h"
+#include "SkillFeatures/OnHit/OnHitFeature.h"
 #include "Utility/AssetManagerUtility.h"
 #include "Structs/EntityStructs.h"
 
@@ -28,13 +30,8 @@ void AEntityClass::BeginPlay()
 {
 	Super::BeginPlay();
 	DefineAttributes();
-	DefineSkills();
-	
-	if (IsValid(Specialization))
-		SpecializationName = Specialization->GetFName();
 
-	UE_LOG(LogTemp, Warning, TEXT("Specialization: %s"), *SpecializationName.ToString());
-	
+	/*
 	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
 	if (!AssetManager)
 	{
@@ -54,14 +51,10 @@ void AEntityClass::BeginPlay()
 				{
 					if (UEquipmentDataAsset* EquipmentDataAsset = AssetManager->GetPrimaryAssetObject<UEquipmentDataAsset>(EquipmentAssetId))
 					{
-						UEquipmentInstance* EquipmentInstance = EquipmentDataAsset->GetInstance(StrongThis, FItemRarityStruct(EItemRarityEnum::Normal), 1, 1);
+						UEquipmentInstance* EquipmentInstance = EquipmentDataAsset->GetInstance(FItemRarityStruct(EItemRarityEnum::Normal), 1, 1, StrongThis);
 						StrongThis->EquippedEquipments.Add(EquipmentDataAsset->EquipmentSlot, EquipmentInstance);
 						
-						// 1. Pegamos o texto puro (FString) do Enum usando a reflexão
-						FString EquipmentSlotString = StaticEnum<EEquipmentSlot>()->GetNameStringByValue((int64)EquipmentDataAsset->EquipmentSlot);
-						FString WeaponTypeString = StaticEnum<EWeaponType>()->GetNameStringByValue((int64)EquipmentDataAsset->WeaponType);
-						
-						AEquipmentActor* Actor = EquipmentInstance->GetEquipmentActorAndAttach(FName(*(EquipmentSlotString + WeaponTypeString)));
+						AEquipmentActor* Actor = EquipmentInstance->GetEquipmentActorAndAttach(EquipmentDataAsset->GetEquipmentSocketName());
 						if (UStaticMesh* Mesh = EquipmentDataAsset->StaticMesh.Get())
 						{
 							Actor->StaticMeshComponent->SetStaticMesh(Mesh);
@@ -70,7 +63,7 @@ void AEntityClass::BeginPlay()
 				}
 			}
 		})
-	);
+	);*/
 }
 
 
@@ -116,6 +109,7 @@ void AEntityClass::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 		}
 	}
 	
+	/*
 	// Verificação para USpecializationDataAsset
 	if (PropertyName == GET_MEMBER_NAME_CHECKED(USkillDataAsset, Specialization))
 	{
@@ -129,42 +123,9 @@ void AEntityClass::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 			SpecializationName = NAME_None;
 		}
 	}
+*/
 }
 #endif
-
-// Define as skills iniciais da entidade
-void AEntityClass::DefineSkills()
-{
-	
-	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
-	if (!AssetManager)
-	{
-		UE_LOG(LogTemp, Error, TEXT("AEntityClass::DefineSkills - AssetManager invalido."));
-		return;
-	}
-	
-	TWeakObjectPtr WeakThis(this);
-	
-	// Inicia o carregamento em massa
-	AssetManager->LoadPrimaryAssets(InitialSkillsAssets, TArray<FName>(), FStreamableDelegate::CreateLambda([WeakThis, AssetManager]
-	{
-		if (AEntityClass* StrongThis = WeakThis.Get())
-		{
-			for (FPrimaryAssetId& AssetId : StrongThis->InitialSkillsAssets)
-			{
-				if (USkillDataAsset* AssetLoaded = AssetManager->GetPrimaryAssetObject<USkillDataAsset>(AssetId))
-				{
-					USkillInstance* SkillInstance = AssetLoaded->CreateInstance(StrongThis);
-					StrongThis->InitializeSkills(SkillInstance);
-					StrongThis->SkillsInstances.Add(SkillInstance);
-					StrongThis->LoadActivationSkillAssets(SkillInstance);
-					if (APlayerClass* Char = Cast<APlayerClass>(StrongThis))
-						Char->EquippedSkillsInstances.Add(SkillInstance);
-				}
-			}
-		}
-	}));
-}
 
 // Define os atributos padrão para todas as criaturas, é sobrescrito pelo método da classe filha
 void AEntityClass::DefineAttributes()
@@ -263,13 +224,14 @@ void AEntityClass::DefineAttributes()
 
 AEquipmentActor* AEntityClass::GetEquipmentActor(EEquipmentSlot Slot)
 {
-	TObjectPtr<UEquipmentInstance> Instance;
-	if (TObjectPtr<UEquipmentInstance>* FoundPtr = EquippedEquipments.Find(Slot))
+	TWeakObjectPtr<UEquipmentInstance> WeakInstance;
+	if (TWeakObjectPtr<UEquipmentInstance>* FoundPtr = EquippedEquipments.Find(Slot))
 	{
-		if (FoundPtr)
+		WeakInstance = *FoundPtr;
+		if (UEquipmentInstance* StrongInstance = WeakInstance.Get())
 		{
-			Instance = *FoundPtr;
-			return IsValid(Instance->EquipmentActor) ? Instance->EquipmentActor : nullptr;
+			if (AEquipmentActor* EquipmentActor = StrongInstance->EquipmentActor.Get())
+				return EquipmentActor;
 		}
 	}
 	return nullptr;
@@ -314,6 +276,28 @@ float AEntityClass::CalculateXPReturn(AEntityClass* Killer)
 
 float AEntityClass::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	if (DamageEvent.GetTypeID() == FDamageStruct::ClassID)
+	{
+		const FDamageStruct* DamageStruct = static_cast<const FDamageStruct*>(&DamageEvent);
+		
+		if (FAttribute* Attribute = GetEquivalentResistanceAttribute(DamageStruct->TypeDamage))
+		{
+			float DamageReductionByResists = DamageStruct->Damage * (Attribute->Value / 100);
+			int16 FinalDamage = DamageStruct->Damage - DamageReductionByResists;
+			DamageAmount = FinalDamage;
+			
+			if (FAttribute* Health = TrueAttributes.Find(EEntityTrueAttributeEnum::Health))
+			{
+				float NewHealth = Health->Value - FinalDamage;
+				if (NewHealth < 0) NewHealth = 0;
+					Health->Value = NewHealth;
+				
+				UE_LOG(LogTemp, Warning, TEXT("FINAL DAMAGE: %i"), FinalDamage);
+				OnHealthChanged.ExecuteIfBound(NewHealth);
+			}
+		}
+	}
+	
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 }
 
@@ -329,74 +313,140 @@ void AEntityClass::Die()
 {
 }
 
-void AEntityClass::InitializeSkills(TArray<USkillInstance*> SkillInstances)
+void AEntityClass::RemoveEffect(FPrimaryAssetId EffectId)
 {
-	for (USkillInstance* Instance : SkillInstances)
+	Effects.Remove(EffectId);
+}
+
+FAttribute* AEntityClass::GetSimbolicAttribute(EEntitySimbolicAttributeEnum SimbolicAttribute)
+{
+	return SimbolicAttributes.Find(SimbolicAttribute);
+}
+
+FAttribute* AEntityClass::GetTrueAttribute(EEntityTrueAttributeEnum TrueAttribute)
+{
+	return TrueAttributes.Find(TrueAttribute);
+}
+
+int8 AEntityClass::GetAmountActiveEffects(FPrimaryAssetId EffectId)
+{
+	if (TWeakObjectPtr<UEffectInstance>* WeakEffectPtr = Effects.Find(EffectId))
 	{
-		Instance->InitializeFeatures();
+		TWeakObjectPtr<UEffectInstance> WeakEffect = *WeakEffectPtr;
+		if (UEffectInstance* Effect = WeakEffect.Get())
+		{
+			return Effect->Stacks;
+		}
+	}
+	return 0;
+}
+
+void AEntityClass::ApplyEffect(UEffectInstance* Effect, FHitOverlapResult& HitOverlapResult)
+{
+	if (!IsValid(Effect)) return;
+	
+	Effects.Add(Effect->DataAsset->GetPrimaryAssetId(), Effect);	
+	Effect->Stacks++;
+	Effect->ApplyOnTargetEntity(HitOverlapResult);
+}
+
+void AEntityClass::ApplyEffect(FPrimaryAssetId EffectId)
+{
+	if (TWeakObjectPtr<UEffectInstance>* WeakEffectPtr = Effects.Find(EffectId))
+	{
+		TWeakObjectPtr<UEffectInstance> WeakEffect = *WeakEffectPtr;
+		if (UEffectInstance* Effect = WeakEffect.Get())
+		{
+			Effect->Stacks++;
+			Effect->Reset = true;
+		}
 	}
 }
 
-void AEntityClass::InitializeSkills(USkillInstance* SkillInstance)
+void AEntityClass::EquipEquipment(UEquipmentInstance* Equipment)
 {
-	SkillInstance->InitializeFeatures();
-}
-
-
-void AEntityClass::LoadActivationSkillAssets(USkillInstance* SkillInstance)
-{
-	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
-	if (!AssetManager)
+	if (!IsValid(Equipment))
 	{
-		UE_LOG(LogTemp, Error, TEXT("APlayerClass::LoadSkillAssets - AssetManager invalido."));
+		UE_LOG(LogTemp, Warning, TEXT("AEntityClass::EquipEquipment Error"));
 		return;
 	}
 	
-	TArray<FName> ActivationBundles = {
-		FName("ActivationVFX"), FName("ActivationSFX")
-	};
+	if (Equipment->EntityOwner != this)
+		Equipment->EntityOwner = this;
 	
-	if (!SkillInstance->ActivationHandle || !SkillInstance->ActivationHandle.IsValid())
+	EquippedEquipments.Add(Equipment->DataAsset->EquipmentSlot, Equipment);
+}
+
+
+void AEntityClass::LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync)
+{
+	if (bAsync)
 	{
-		SkillInstance->ActivationHandle = AssetManager->LoadPrimaryAsset(
-			SkillInstance->GetAssetId(),
-			ActivationBundles,
-			FStreamableDelegate::CreateLambda([]()
-			{
-				UE_LOG(LogTemp, Log, TEXT("Activation Asset carregado"));	
-			})
-		);
-	}
-	
-	TArray<FName> AuraBundles;
-	
-	if (UActivationChargeFeature* CastWithHoldFeature = Cast<UActivationChargeFeature>(SkillInstance->ActivationFeature))
-	{
-		if (CastWithHoldFeature->bAuraInEntityOwner)
+		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
+		if (!AssetManager)
 		{
-			if (!SkillInstance->EntityOwnerAuraHandle || !SkillInstance->EntityOwnerAuraHandle.IsValid())
-			{
-				AuraBundles.Add(FName("EntityOwnerAuraVFX"));
-			}
+			UE_LOG(LogTemp, Error, TEXT("APlayerClass::LoadSkillAssets - AssetManager invalido."));
+			return;
 		}
 		
-		if (CastWithHoldFeature->bAuraInWeapon)
+		if (!SkillInstance->SkillsHandle || !SkillInstance->SkillsHandle.IsValid())
 		{
-			if (!SkillInstance->WeaponAuraHandle || !SkillInstance->WeaponAuraHandle.IsValid())
-			{
-				AuraBundles.Add(FName("WeaponAuraVFX"));
-			}
+			SkillInstance->SkillsHandle = AssetManager->LoadPrimaryAsset(
+				SkillInstance->GetAssetId(),
+				TArray<FName>({FName("FX")}),
+				FStreamableDelegate::CreateLambda([]()
+				{
+					UE_LOG(LogTemp, Log, TEXT("Skill Assets carregados"));	
+				})
+			);
 		}
+	} else
+	{
+		if (SkillInstance->ActivationFeature)
+			SkillInstance->ActivationFeature->LoadFXSync();
+		if (SkillInstance->ExecutionFeature)
+			SkillInstance->ExecutionFeature->LoadFXSync();
+		
+		if (!SkillInstance->OnHitFeature.IsEmpty())
+			for (UOnHitFeature* Feature : SkillInstance->OnHitFeature)
+			{
+				Feature->LoadFXSync();
+			}
+		UE_LOG(LogTemp, Log, TEXT("Skill Assets carregados sincronamente"));	
+		
 	}
-	
+}
 
-
-	SkillInstance->EntityOwnerAuraHandle = AssetManager->LoadPrimaryAsset(
-		SkillInstance->GetAssetId(),
-		AuraBundles,
-		FStreamableDelegate::CreateLambda([]()
-		{
-			UE_LOG(LogTemp, Log, TEXT("Aura Assets carregados"));	
-		})
-	);
+FAttribute* AEntityClass::GetEquivalentResistanceAttribute(ETypeDamage InTypeDamage)
+{
+	switch (InTypeDamage)
+	{
+		case ETypeDamage::SlashingDamage:
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::SlashingResist);
+		case ETypeDamage::PiercingDamage:
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::PiercingResist);
+		case ETypeDamage::BludgeoningDamage:
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::BludgeoningResist);
+		case ETypeDamage::FireDamage:       
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::FireResist);
+		case ETypeDamage::IceDamage:    
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::IceResist);
+		case ETypeDamage::LightningDamage:  
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::LightningResist);
+		case ETypeDamage::EarthDamage:      
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::EarthResist);
+		case ETypeDamage::PoisonDamage:     
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::PoisonResist);
+		case ETypeDamage::AcidDamage:       
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::AcidResist);
+		case ETypeDamage::HolyDamage:       
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::HolyResist);
+		case ETypeDamage::ProfaneDamage:    
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::ProfaneResist);
+		case ETypeDamage::LightDamage:      
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::LightResist);
+		case ETypeDamage::ShadowDamage:     
+			return TrueAttributes.Find(EEntityTrueAttributeEnum::ShadowResist);
+		default: return nullptr;
+	}
 }

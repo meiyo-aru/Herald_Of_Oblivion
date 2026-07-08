@@ -5,6 +5,7 @@
 
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
+#include "Sound/SoundCue.h"
 #include "NiagaraSystem.h"
 #include "Core/EntityClass.h"
 #include "Data/SkillDataAsset.h"
@@ -23,7 +24,8 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 {
 
 	Super::StartActivation(InSkillContext);
-	
+	UE_LOG(LogTemp, Error, TEXT("PPPPPPPPPPPPPPPPPPPPPPssss."));
+
 	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
 	if (!SkillInstance)
 	{
@@ -41,14 +43,20 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 	
 	USkillDataAsset* SkillDataAsset = AssetManager->Get().GetPrimaryAssetObject<USkillDataAsset>(SkillInstance->GetAssetId());
 	
-	AEntityClass* EntityOwner = InSkillContext.EntityOwner.Get();
+	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 	
 	if (!SkillDataAsset || !EntityOwner) return;
 	
 
 	if (bAura && bAuraInEntityOwner)
 	{
-		if (UNiagaraSystem* AuraEffect = this->EntityOwnerAuraEffect.Get())
+		UNiagaraSystem* AuraEffect;
+		if (LoadedEntityOwnerAuraEffect) 
+			AuraEffect = LoadedEntityOwnerAuraEffect;
+		else 
+			AuraEffect = EntityOwnerAuraEffect.Get();
+		
+		if (AuraEffect)
 		{
 			UNiagaraComponent* NC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::SkeletalMesh, EntityOwner->GetMesh(), NAME_None);
 			NC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
@@ -62,7 +70,13 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 	
 	if (bAura && bAuraInWeapon)
 	{
-		if (UNiagaraSystem* AuraEffect = this->WeaponAuraEffect.Get())
+		UNiagaraSystem* AuraEffect;
+		if (LoadedWeaponAuraEffect) 
+			AuraEffect = LoadedWeaponAuraEffect;
+		else 
+			AuraEffect = WeaponAuraEffect.Get();
+		
+		if (AuraEffect)
 		{
 			if (AEquipmentActor* RightWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
 			{
@@ -97,8 +111,18 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 
 	if (bChargeOnTarget && !InSkillContext.StartSurfaceNormal.IsZero())
 	{
-		if (UNiagaraSystem* ActivationFollowingAimVFX = ActivationFollowingAimEffect.Get())
+		UNiagaraSystem* ActivationFollowingAimVFX;
+		if (LoadedActivationFollowingAimEffect)
 		{
+			UE_LOG(LogTemp, Warning, TEXT("llllllllllllllllllll"));
+			ActivationFollowingAimVFX = LoadedActivationFollowingAimEffect;
+		} 
+		else 
+			ActivationFollowingAimVFX = ActivationFollowingAimEffect.Get();
+		
+		if (ActivationFollowingAimVFX)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("KKKKKKKKKKKKKKKKKKK"));
 			UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFollowingAimVFX, SpawnRotation, InSkillContext.StartLocation, InSkillContext);
 			NiagaraComp->SetVectorParameter(FName("AimLocation"), InSkillContext.StartLocation);
 			NiagaraComp->SetBoolParameter(FName("bUseLocalSpace"), false);
@@ -106,8 +130,10 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 			{
 				TWeakObjectPtr WeakThis(this);
 				TWeakObjectPtr NiagaraWeak(NiagaraComp);
-
-				GetWorld()->GetTimerManager().SetTimer(TimerHandleChargeFollowAim, 
+				if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+				{
+					
+					World->GetTimerManager().SetTimer(TimerHandleChargeFollowAim, 
 					[WeakThis, NiagaraWeak, &InSkillContext]{
 						if (UActivationChargeFeature* CastWithHoldFeature = WeakThis.Get())
 						{
@@ -132,6 +158,8 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 					},
 					RateToFollow,
 					true);
+				}
+
 			}
 			NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
 			NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
@@ -140,7 +168,13 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 	}
 	if (bChargeOnRightHand || bChargeOnLeftHand)
 	{
-		if (UNiagaraSystem* ActivationFX = ActivationEffect.Get())
+		UNiagaraSystem* ActivationFX;
+		if (LoadedActivationEffect) 
+			ActivationFX = LoadedActivationEffect;
+		else 
+			ActivationFX = ActivationEffect.Get();
+
+		if (ActivationFX)
 		{
 			if (bChargeOnRightHand)
 			{
@@ -212,21 +246,24 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 	
 	TWeakObjectPtr WeakThis(this);
 	TWeakObjectPtr<USkillInstance> WeakSkillInstance = InSkillContext.SkillInstance;
-	GetWorld()->GetTimerManager().SetTimer(
-		this->TimerHandle, 
-		[WeakThis, WeakSkillInstance, this]() 
-		{
-			if (!WeakThis.IsValid() || !WeakSkillInstance.IsValid() || !TimerHandle.IsValid())
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+	{
+		World->GetTimerManager().SetTimer(
+			this->TimerHandle, 
+			[WeakThis, WeakSkillInstance, this]() 
 			{
-				return;
-			}
+				if (!WeakThis.IsValid() || !WeakSkillInstance.IsValid() || !TimerHandle.IsValid())
+				{
+					return;
+				}
 
-			WeakThis->CompleteActivation(WeakSkillInstance->CurrentContext);
-		},
-            MaxChargeTime,
-		false,
-		-1
-	);
+				WeakThis->CompleteActivation(WeakSkillInstance->CurrentContext);
+			},
+	            MaxChargeTime,
+			false,
+			-1
+		);
+	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("CastWithHoldActivation Start OK"));
 }
@@ -234,31 +271,33 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 void UActivationChargeFeature::CompleteActivation(FSkillContext& InSkillContext)
 {
 	Super::CompleteActivation(InSkillContext);
-	GetWorld()->GetTimerManager().ClearTimer(this->TimerHandleChargeFollowAim);
-
-	if (InSkillContext.bActivated) return;
-
-	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
-	if (!SkillInstance)
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		UE_LOG(LogTemp, Error, TEXT("UActivationCastWithHoldFeature::CompleteActivation - SkillInstance invalido."));
-		return;
-	}
-	
-   if (InSkillContext.HoldDuration < MinChargeTime)
-	{
-		CleanNiagara(InSkillContext.SpawnedNiagaraComponents);
-		return;
-	}
+		World->GetTimerManager().ClearTimer(this->TimerHandleChargeFollowAim);
+		if (InSkillContext.bActivated) return;
 
-	InSkillContext.ChargeRatio = FMath::Clamp(InSkillContext.HoldDuration / MaxChargeTime, 0.0f, 1.0f);
-	
-	InSkillContext.bActivated = true;
-	InSkillContext.SkillInstance->OnSkillActivateDelegate.Broadcast(InSkillContext);
-	this->CleanNiagara(InSkillContext.SpawnedNiagaraComponents);
+		USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
+		if (!SkillInstance)
+		{
+			UE_LOG(LogTemp, Error, TEXT("UActivationCastWithHoldFeature::CompleteActivation - SkillInstance invalido."));
+			return;
+		}
+		
+	   if (InSkillContext.HoldDuration < MinChargeTime)
+		{
+			CleanNiagara(InSkillContext.SpawnedNiagaraComponents);
+			return;
+		}
+
+		InSkillContext.ChargeRatio = FMath::Clamp(InSkillContext.HoldDuration / MaxChargeTime, 0.0f, 1.0f);
+		
+		InSkillContext.bActivated = true;
+		InSkillContext.SkillInstance->OnSkillActivateDelegate.Broadcast(InSkillContext);
+		this->CleanNiagara(InSkillContext.SpawnedNiagaraComponents);
+	}
 }
 
-void UActivationChargeFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents)
+void UActivationChargeFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
 	Super::CleanNiagara(SpawnedNiagaraComponents);
 }
@@ -267,11 +306,16 @@ void UActivationChargeFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraCompon
 
 void UActivationChargeFeature::BeginDestroy()
 {
-	// Verificamos se o mundo ainda existe e limpamos o timer
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(this->TimerHandle);
-	}
-
 	Super::BeginDestroy();
+}
+
+void UActivationChargeFeature::LoadFXSync()
+{
+	Super::LoadFXSync();
+	
+	LoadedActivationFollowingAimEffect = ActivationFollowingAimEffect.LoadSynchronous();
+	LoadedActivationFollowingAimSound = ActivationFollowingAimSound.LoadSynchronous();
+	
+	LoadedEntityOwnerAuraEffect = EntityOwnerAuraEffect.LoadSynchronous();
+	LoadedWeaponAuraEffect = WeaponAuraEffect.LoadSynchronous();
 }

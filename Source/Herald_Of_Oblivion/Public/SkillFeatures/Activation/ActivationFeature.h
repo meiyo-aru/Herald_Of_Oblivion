@@ -27,25 +27,36 @@ public:
 	UPROPERTY(EditAnywhere, Category="Aim")
 	float AimRadius = 5.0f;
 	
+	// Carrega os FX de forma síncrona
+	virtual void LoadFXSync();
+
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 
-	FHitResult GetAimTarget(FSkillContext& InContext, float Sensibility) const;
+	// Retorna um HitResult baseado na visão do jogador
+	FHitResult GetAimTarget(FSkillContext& InContext, float InAimRadius) const;
+	// Retorna um HitResult baseado no cursor
 	FHitResult GetCursorLocation(FSkillContext& InContext) const;
 	
-	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents) override;
+	// Limpa o Niagara
+	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents) override;
 
 	// Lógica de ativação inicial e final
 	virtual void StartActivation(FSkillContext& InSkillContext);	
 	virtual void CompleteActivation(FSkillContext& InSkillContext);	
+
 	
 	// Efeito de Ativação
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "ActivationVFX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> ActivationEffect;
+	UPROPERTY()
+	TObjectPtr<UNiagaraSystem> LoadedActivationEffect = nullptr;
 
 	// Som de Ativação
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "ActivationSFX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<USoundCue> ActivationSound;
+	UPROPERTY()
+	TObjectPtr<USoundCue> LoadedSoundCue = nullptr;
 
 };
 

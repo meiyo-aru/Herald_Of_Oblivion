@@ -3,6 +3,7 @@
 #include "CoreMinimal.h" 
 #include "EntityEnums.generated.h"
 
+// Especializacao principal da entidade, usada para separar classes como mago e guerreiro.
 UENUM(BlueprintType)
 enum class EEntitySpecializationEnum : uint8
 {
@@ -11,6 +12,7 @@ enum class EEntitySpecializationEnum : uint8
 	None				UMETA(DisplayName = "None")
 };
 
+// Condicoes especiais de abate que podem multiplicar recompensas como XP.
 UENUM(BlueprintType)
 enum class EEntitySlaughterAchievementsEnum : uint8
 {
@@ -26,6 +28,7 @@ enum class EEntitySlaughterAchievementsEnum : uint8
 // 	None					UMETA(DisplayName = "None")
 // };
 
+// Raca da entidade, usada para filtros, identidade e possiveis regras futuras.
 UENUM(BlueprintType)
 enum class EEntityRaceEnum : uint8
 {
@@ -34,7 +37,7 @@ enum class EEntityRaceEnum : uint8
 	None		UMETA(DisplayName = "None")
 };
 
-// Enumerator para a raridade da entidade
+// Enumerator para a raridade da entidade, afetando dificuldade e recompensas.
 UENUM(BlueprintType)
 enum class EEntityRarityEnum : uint8
 {
@@ -48,7 +51,7 @@ enum class EEntityRarityEnum : uint8
 };
 
 
-// Enumerator para a divindade adorada pela entidade
+// Enumerator para a divindade adorada pela entidade.
 UENUM(BlueprintType)
 enum class EEntityDivinityEnum : uint8
 {
@@ -56,7 +59,7 @@ enum class EEntityDivinityEnum : uint8
 	None	UMETA(DisplayName = "None")
 };
 
-// Enumerator para as restrições afetando a entidade
+// Enumerator para as restricoes afetando a entidade, bloqueando sistemas especificos.
 UENUM(BlueprintType)
 enum class ERestrictionTypeEnum : uint8
 {
@@ -71,7 +74,7 @@ enum class ERestrictionTypeEnum : uint8
 };
 
 
-// Enumerator para o tipo do atributo, simbolico ou verdadeiro
+// Enumerator para o tipo do atributo, simbolico ou verdadeiro.
 UENUM(BlueprintType)
 enum class EAttributeTypeEnum : uint8
 {
@@ -80,7 +83,7 @@ enum class EAttributeTypeEnum : uint8
 	None					UMETA(DisplayName = "None")
 };
 
-// Enumerator para o atributo simbolico em si
+// Enumerator para o atributo simbolico em si; cada um pode alimentar varios atributos verdadeiros.
 UENUM(BlueprintType)
 enum class EEntitySimbolicAttributeEnum : uint8
 {
@@ -93,7 +96,27 @@ enum class EEntitySimbolicAttributeEnum : uint8
 	None			UMETA(DisplayName = "None")
 };
 
-// Enumerator para o atributo verdadeiro em si
+// Enum para os tipos de dano
+UENUM(BlueprintType)
+enum class ETypeDamage : uint8
+{
+	SlashingDamage      UMETA(DisplayName = "Slashing Damage"),
+	PiercingDamage      UMETA(DisplayName = "Piercing Damage"),
+	BludgeoningDamage   UMETA(DisplayName = "Bludgeoning Damage"),
+	FireDamage          UMETA(DisplayName = "Fire Damage"),
+	IceDamage           UMETA(DisplayName = "Ice Damage"),
+	LightningDamage     UMETA(DisplayName = "Lightning Damage"),
+	EarthDamage         UMETA(DisplayName = "Earth Damage"),
+	PoisonDamage        UMETA(DisplayName = "Poison Damage"),
+	AcidDamage          UMETA(DisplayName = "Acid Damage"),
+	HolyDamage          UMETA(DisplayName = "Holy Damage"),
+	ProfaneDamage       UMETA(DisplayName = "Profane Damage"),
+	LightDamage         UMETA(DisplayName = "Light Damage"),
+	ShadowDamage        UMETA(DisplayName = "Shadow Damage"),
+	None				UMETA(DisplayName = "None"),
+};
+
+// Enumerator para o atributo verdadeiro em si, dividido por dano, resistencia, recursos e utilidade.
 UENUM(BlueprintType)
 enum class EEntityTrueAttributeEnum : uint8
 {

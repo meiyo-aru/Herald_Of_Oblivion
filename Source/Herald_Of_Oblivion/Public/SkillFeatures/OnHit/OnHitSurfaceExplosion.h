@@ -6,6 +6,7 @@
 #include "OnHitFeature.h"
 #include "OnHitSurfaceExplosion.generated.h"
 
+class USoundCue;
 /**
  * UOnHitSurface
  * Spawna uma explosão ao atingir
@@ -15,18 +16,26 @@ class HERALD_OF_OBLIVION_API UOnHitSurfaceExplosion : public UOnHitFeature
 {
 	GENERATED_BODY()
 public:
+	
+	// Carrega os FX de forma assincrona ou não
+	virtual void LoadFXSync() override;
+
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
 	
 	// Realiza operações essenciais e comuns às classes filhas
 	virtual void Execute(FSkillContext& InSkillContext) override;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "OnHitVFX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> OnHitEffect;
+	UPROPERTY()
+	TObjectPtr<UNiagaraSystem> LoadedOnHitEffect = nullptr;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "OnHitSFX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<USoundCue> OnHitSound;
-
+	UPROPERTY()
+	TObjectPtr<USoundCue> LoadedOnHitSound = nullptr;
+	
 	UPROPERTY(EditAnywhere, Category = "Explosion")
 	float ExplosionRadius = 30.0f;
 	

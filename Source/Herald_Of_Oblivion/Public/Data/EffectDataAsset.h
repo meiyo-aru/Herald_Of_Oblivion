@@ -3,9 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Structs/AffectAttributeStruct.h"
-#include "Structs/DamageStruct.h"
-#include "Structs/RecoverStruct.h"
+#include "Core/EffectInstance.h"
 #include "UObject/Object.h"
 #include "EffectDataAsset.generated.h"
 
@@ -36,9 +34,34 @@ class HERALD_OF_OBLIVION_API UEffectDataAsset : public UPrimaryDataAsset
 	GENERATED_BODY()
 	
 public:
+	UEffectDataAsset(){};
 	FPrimaryAssetId GetPrimaryAssetId() const {
-		return FPrimaryAssetId("Skill", GetFName());
+		return FPrimaryAssetId("Effect", GetFName());
 	}
+
+	UEffectInstance* GetInstance(AActor* InOriginatingEntity = nullptr, AEntityClass* InTargetEntity = nullptr);
+
+	// O Tipo do efeito
+	UPROPERTY(EditAnywhere, Category="Properties")
+	EEffectType EffectType;
+	
+	// Define se o efeito pode acumular
+	UPROPERTY(EditAnywhere, Category="Properties")
+	bool bAcumulateEffect = false;
+	
+	// Define a quantidade máxima de acúmulos de um efeito na mesma entidade
+	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="bAcumulateEffect", EditConditionHides))
+	int8 MaxEffectStacks = 5;
+	
+	// Feature de ativação do efeito, implementa a lógica de ativação
+	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	TObjectPtr<UActivationEffectFeature> ActivationFeature;
+	
+	// Feature de execução do efeito, implementa a lógica de ativação
+	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	TObjectPtr<UExecutionEffectFeature> ExecutionFeature;
+		
+	/*
 	// O Atributo afetado pelo efeito, positavemente ou negativamente
 	UPROPERTY(EditAnywhere, Category = "Properties")
 	FAffectAttributeStruct AffectAttribute;
@@ -50,28 +73,11 @@ public:
 	// O dano causado pelo efeito
 	UPROPERTY(EditAnywhere, Category = "Properties")
 	FDamageStruct DamageStruct;
+	*/
 	
-	// Feature de ativação da habilidade, implementa a lógica de ativação
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	UExecutionEffectFeature* ExecutionFeature;
-	
-	// Feature de ativação da habilidade, implementa a lógica de ativação
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
-	UActivationEffectFeature* ActivationFeature;
-	
-	// O FX do efeito
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFX", meta = (AssetBundles = "VFX"))
-	TSoftObjectPtr<UNiagaraSystem> VFX;
-
-	// O SoundEffect do efeito
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SFX", meta = (AssetBundles = "SFX"))
-	TSoftObjectPtr<USoundCue> SFX;
-	
-	// O Tipo do efeito
-	UPROPERTY(EditAnywhere, Category="Properties")
-	EEffectType EffetType;
-	
+	/*
 	// As restrições causadas pelo efeito
 	UPROPERTY(EditAnywhere, Category="Properties")
 	TArray<ERestrictionTypeEnum> RestrictionTypes;
+	*/
 };

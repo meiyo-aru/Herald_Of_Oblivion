@@ -10,13 +10,13 @@ void UUI_Default::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
-	if (APlayerController* PC = GetOwningPlayer())
+	/*if (APlayerController* PC = GetOwningPlayer())
 	{
 		if (APlayerClass* Char = Cast<APlayerClass>(PC->GetCharacter()))
 		{
 			Char->OnHealthChanged.BindUObject(this, &UUI_Default::UpdateHealthBar);
 		}
-	}
+	}*/
 }
 
 void UUI_Default::UpdateHealthBar(float NewHealth)

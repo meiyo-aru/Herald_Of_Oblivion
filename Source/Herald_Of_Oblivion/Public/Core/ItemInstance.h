@@ -6,6 +6,7 @@
 #include "UObject/Object.h"
 #include "ItemInstance.generated.h"
 
+class USkillDataAsset;
 class AItemActor;
 class UItemDataAsset;
 class AEntityClass;
@@ -23,7 +24,7 @@ class HERALD_OF_OBLIVION_API UItemInstance : public UObject
 public:
 	// Ponteiro para o USkillDataAsset do item
 	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Item"))
-	FPrimaryAssetId AssetId;
+	TObjectPtr<USkillDataAsset> DataAsset;
 
 	// A entidade dona do item atualmente
 	UPROPERTY(VisibleAnywhere, Category="Properties")
@@ -31,7 +32,7 @@ public:
 	
 	// O Actor do item, existe um actor para cada instancia
 	UPROPERTY(VisibleAnywhere, Category="Properties")
-	TObjectPtr<AItemActor> ItemActor;
+	TWeakObjectPtr<AItemActor> ItemActor;
 	
 	// A quantidade do item
 	UPROPERTY(EditAnywhere, Category="Properties")
@@ -39,10 +40,14 @@ public:
 	
 	UItemInstance();
 	
-	void Initialize(AEntityClass* InOwner, FPrimaryAssetId InDataAsset, int8 InAmount);
+	// Inicializa a instancia com os valores
+	void Initialize(AEntityClass* InOwner, USkillDataAsset* InDataAsset, int8 InAmount);
+	
+	// Prepara para mandar para o Pool
 	virtual void PrepareForPooling();
 	
-	AItemActor* CreateItemActorAndSpawn(FVector Location, FRotator Rotation);
-	AItemActor* CreateItemActorAndSpawnAttached(FName SocketToAttach);
-
+	// Procura um Actor no Pool e o Retorna
+	AItemActor* GetItemActor(FVector Location, FRotator Rotation);
+	// Procura um Actor no Pool, o anexa ao EntityOwner e o retorna
+	AItemActor* GetItemActorAndAttach(FName SocketToAttach);
 };

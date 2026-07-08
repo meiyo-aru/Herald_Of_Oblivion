@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Structs/ItemStructs.h"
+#include "Data/EquipmentDataAsset.h"
 #include "EquipmentInstance.generated.h"
 
-class UEquipmentDataAsset;
+class USkillDataAsset;
 class AEquipmentActor;
 class AEntityClass;
 class UOnHitFeature;
@@ -24,13 +25,18 @@ class HERALD_OF_OBLIVION_API UEquipmentInstance : public UObject
 	
 public:	
 	// Ponteiro para o DataAsset do equipamento
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Equipment"))
-	FPrimaryAssetId AssetId;
+	UPROPERTY(EditAnywhere, Category="Properties")
+	TObjectPtr<UEquipmentDataAsset> DataAsset;
 
 	// A entidade dona do item atualmente
 	UPROPERTY(VisibleAnywhere, Category="Properties")
 	TWeakObjectPtr<AEntityClass> EntityOwner;
 
+	// Define se o equipamento está nas mão, caso true e esteja equipado ele aparece na mão, caso false e esteja equipado 
+	// ele aparece na bainha caso seja uma arma
+	UPROPERTY(VisibleAnywhere, Category="Properties", meta=(EditCondition="DataAsset->EquipmentType == EEquipmentType::Weapon"))
+	bool InHands = false;
+	
 	// A raridade do equipamento
 	UPROPERTY(VisibleAnywhere, Category="Properties")
 	FItemRarityStruct Rarity;
@@ -41,7 +47,7 @@ public:
 	
 	// O Actor do Equipamento, existe um actor para cada instancia
 	UPROPERTY(VisibleAnywhere, Category="Properties")
-	TObjectPtr<AEquipmentActor> EquipmentActor;
+	TWeakObjectPtr<AEquipmentActor> EquipmentActor;
 
 	// Feature de OnHit
 	UPROPERTY(EditAnywhere, Category = "Features")
@@ -49,9 +55,11 @@ public:
 	
 	UEquipmentInstance();
 	
-	void Initialize(FItemRarityStruct InRarity, int8 InLevel, AEntityClass* InOwner, FPrimaryAssetId InDataAsset, TArray<TObjectPtr<
-	                UOnHitFeature>> InOnHitFeatures);
+	void Initialize(FItemRarityStruct InRarity, int8 InLevel, UEquipmentDataAsset* InDataAsset, const TArray<
+	                UOnHitFeature*>& InOnHitFeatures, AEntityClass* InOwner = nullptr);
 	
-	AEquipmentActor* GetEquipmentActor(FVector Location, FRotator Rotation);
-	AEquipmentActor* GetEquipmentActorAndAttach(FName SocketToAttach);
+	// Procura um Actor no Pool e o Retorna
+	AEquipmentActor* GetEquipmentActor(FVector Location = FVector::ZeroVector, FRotator Rotation = FRotator::ZeroRotator);
+	// Procura um Actor no Pool, o anexa ao EntityOwner e o retorna
+	AEquipmentActor* GetEquipmentActorAndAttach();
 };

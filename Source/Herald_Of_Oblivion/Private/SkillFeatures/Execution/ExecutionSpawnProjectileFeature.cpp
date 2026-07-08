@@ -7,6 +7,7 @@
 #include "Core/SkillActor.h"
 #include "Data/SkillDataAsset.h"
 #include "NiagaraComponent.h"
+#include "NiagaraSystem.h"
 #include "Character/PlayerClass.h"
 #include "Components/SphereComponent.h"
 #include "Core/EquipmentActor.h"
@@ -14,6 +15,11 @@
 #include "Engine/AssetManager.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
+
+void UExecutionSpawnProjectileFeature::LoadFXSync()
+{
+	Super::LoadFXSync();
+}
 
 void UExecutionSpawnProjectileFeature::Initialize(USkillInstance* Owner)
 {
@@ -62,7 +68,7 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		return;
 	}
 	
-	AEntityClass* EntityOwner = InSkillContext.EntityOwner.Get();
+	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 	if (!EntityOwner)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionSpawnProjectileFeature::SpawnProjectile - EntityOwner invalido."));
@@ -75,14 +81,14 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		if (bThrowByTheRightHand)
 		{
 			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("CastSocket");
-			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("RightWeaponSocket");
+				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Cast");
+			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("RightHand");
 			
 		} else
 		{
 			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("CastSocket");
-			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("LeftWeaponSocket");
+				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Cast");
+			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("LeftHand");
 		}
 	}
 	else
@@ -157,7 +163,6 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		SkillActor->ConfigureCollisionComponent(this, EntityOwner);
 	
 	SkillActor->ProjectileMovementComponent->SetUpdatedComponent(SkillActor->CollisionComponent);
-	SkillActor->BindCollisionDelegatesFromExecutionFeature(this);
 		
 	// Se tiver componente de Niagara, configura-o
 	if (SkillActor->NiagaraComponent)
@@ -170,7 +175,12 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		// Seta o objeto callback
 		SkillActor->NiagaraComponent->SetVariableObject(FName("CallbackObject"), SkillActor);
 			
-		UNiagaraSystem* VFX = ExecutionEffect.Get();
+		UNiagaraSystem* VFX;
+		if (LoadedExecutionEffect) 
+			VFX = LoadedExecutionEffect;
+		else 
+			VFX = ExecutionEffect.Get();
+
 		if (!IsValid(VFX))
 		{
 			UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(this));
@@ -217,12 +227,12 @@ void UExecutionSpawnProjectileFeature::ProccessParticles(const TArray<FBasicPart
 	}
 
 	ASkillActor* SkillActor = SkillContext.SkillActor.Get();
-	AEntityClass* EntityOwner = SkillContext.EntityOwner.Get();
+	AEntityClass* EntityOwner = Cast<AEntityClass>(SkillContext.EntityOwner.Get());
 	
 	if (!IsValid(SkillActor) || !IsValid(EntityOwner)) return;
 		
 	UE_LOG(LogTemp, Warning, TEXT("UExecutionSpawnProjectileFeature::ProccessParticles     ssssssssssss"));
-	TArray<FOverlapResult> OutOverlaps = MakeHitSphere(this->RadiusCollision, SkillContext, Data[0].Position);
+	TArray<FOverlapResult> OutOverlaps = MakeOverlapSphere(this->RadiusCollision, SkillContext, Data[0].Position);
 
 	if (OutOverlaps.Num() == 0) return;
 	for (FOverlapResult OutOverlap : OutOverlaps)
