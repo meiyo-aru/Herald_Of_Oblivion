@@ -6,50 +6,79 @@
 #include "Core/EntityClass.h"
 #include "Core/SkillActor.h"
 #include "Structs/SkillStructs.h"
+#include "Subsystems/PoolingManager.h"
 
-
+void USkillFeature::WarmupNiagara(UNiagaraSystem* Niagara)
+{
+	if (IsValid(Niagara))
+	{
+		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+		{
+			
+			if (UNiagaraComponent* NC = UNiagaraFunctionLibrary::SpawnSystemAtLocation(World,
+				Niagara, 
+				FVector::ZeroVector,
+				FRotator::ZeroRotator, 
+				FVector(1), 
+				false,
+				false,
+				ENCPoolMethod::None))
+			{
+				
+				if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+					PoolingManager->SaveNiagaraInPool(NC);
+			}
+		}
+	}
+}
 
 UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, AEntityClass* InEntityOwner, FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName)
 {	
 	if (!InEntityOwner || !VFX || !Target ) return nullptr;
 
-	UNiagaraComponent* AttachedNiagara = UNiagaraFunctionLibrary::SpawnSystemAttached(
-		VFX,
-		Target,
-		AttachSocketName,
-		FVector::ZeroVector,
-		FRotator::ZeroRotator,
-		EAttachLocation::SnapToTarget,
-		true
-	);
-	
-	switch (AuraType)
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		case EAuraType::SkeletalMesh:
+		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+			if (UNiagaraComponent* Niagara = PoolingManager->GetNiagaraComponentFromPool(VFX))
 			{
-				if (USkeletalMeshComponent* SkeletalMeshComponent = Cast<USkeletalMeshComponent>(InEntityOwner->GetMesh()))
+				Niagara->SetAbsolute(false, false, false); 
+				Niagara->AttachToComponent(Target, FAttachmentTransformRules::SnapToTargetIncludingScale, AttachSocketName);
+
+				Niagara->Activate(true);
+				Niagara->SetVisibility(true);
+
+				Niagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnNiagaraSystemFinished);
+				
+				switch (AuraType)
 				{
-					UNiagaraFunctionLibrary::OverrideSystemUserVariableSkeletalMeshComponent(AttachedNiagara,
-						TEXT("Skeletal Mesh"),
-						SkeletalMeshComponent);
+				case EAuraType::SkeletalMesh:
+					{
+						if (USkeletalMeshComponent* SkeletalMeshComponent = Cast<USkeletalMeshComponent>(InEntityOwner->GetMesh()))
+						{
+							UNiagaraFunctionLibrary::OverrideSystemUserVariableSkeletalMeshComponent(Niagara,
+								TEXT("Skeletal Mesh"),
+								SkeletalMeshComponent);
+						}
+						break;
+					}
+				case EAuraType::StaticMesh:
+					{
+						if (UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(Target))
+						{
+							StaticMeshComp->GetStaticMesh()->bAllowCPUAccess = true;
+							UNiagaraFunctionLibrary::OverrideSystemUserVariableStaticMeshComponent(Niagara,
+								TEXT("Static Mesh"),
+								Cast<UStaticMeshComponent>(StaticMeshComp));
+						}
+						break;
+					}
+				default:
+					break;
 				}
-				break;
+				return Niagara;
 			}
-		case EAuraType::StaticMesh:
-			{
-				if (UStaticMeshComponent* StaticMeshComp = Cast<UStaticMeshComponent>(Target))
-				{
-					StaticMeshComp->GetStaticMesh()->bAllowCPUAccess = true;
-					UNiagaraFunctionLibrary::OverrideSystemUserVariableStaticMeshComponent(AttachedNiagara,
-						TEXT("Static Mesh"),
-						Cast<UStaticMeshComponent>(StaticMeshComp));
-				}
-				break;
-			}
-		default:
-			break;
 	}
-	return AttachedNiagara;
+	return nullptr;
 }
 ASkillActor* USkillFeature::SpawnSkillActor(AEntityClass* InEntityOwner, FTransform SpawnTransform)
 {
@@ -71,37 +100,39 @@ ASkillActor* USkillFeature::SpawnSkillActor(AEntityClass* InEntityOwner, FTransf
 	return nullptr;
 }
 
-UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotator Rotation, FVector Location, FSkillContext& InSkillContext)
+UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* NiagaraSystem, FRotator Rotation, FVector Location, FSkillContext& InSkillContext)
 {
 	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		if (IsValid(VFX))
-		{
-			UNiagaraComponent* DetachedNiagara = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-				World,
-				VFX,
-				Location,
-				Rotation,
-				FVector(1.0f),
-				true, 
-				true,
-				ENCPoolMethod::AutoRelease
-			);
-
-	
-			if (!DetachedNiagara)
+		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+			if (UNiagaraComponent* Niagara = PoolingManager->GetNiagaraComponentFromPool(NiagaraSystem))
 			{
-				UE_LOG(LogTemp, Error, TEXT("SpawnVFXAtLocation falhou: O asset do Niagara não está carregado na RAM!"));
-				return nullptr; // Aborta para não crashar a engine
+				Niagara->SetAbsolute(false, false, false); 
+
+				Niagara->SetWorldLocation(Location);
+				Niagara->SetWorldRotation(Rotation);
+				Niagara->Activate(true);
+				Niagara->SetVisibility(true);
+				
+				if (!InSkillContext.Direction.IsZero())
+					Niagara->SetVectorParameter(FName("Direction"), InSkillContext.Direction);
+			
+				Niagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnNiagaraSystemFinished);
+				
+				return Niagara;
 			}
-			DetachedNiagara->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
-			if (!InSkillContext.Direction.IsZero())
-				DetachedNiagara->SetVectorParameter(FName("Direction"), InSkillContext.Direction);
-		
-			return DetachedNiagara;
-		}
 	}
 	return nullptr;
+}
+
+void USkillFeature::OnNiagaraSystemFinished(UNiagaraComponent* NiagaraComponent)
+{
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+		{
+			NiagaraComponent->OnSystemFinished.RemoveAll(this);
+			PoolingManager->SaveNiagaraInPool(NiagaraComponent);
+		}
 }
 
 void USkillFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
@@ -110,7 +141,7 @@ void USkillFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& Spaw
 	{
 		if (UNiagaraComponent* Niagara = NC.Get())
 		{
-			Niagara->SetAutoDestroy(true);
+			UE_LOG(LogTemp, Log, TEXT("Niagara System Finished: %s"), *Niagara->GetName());
 			Niagara->Deactivate();
 		}	
 	}

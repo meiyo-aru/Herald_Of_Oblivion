@@ -125,4 +125,5 @@ public:
 	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
 	TArray<TObjectPtr<UOnHitFeature>> OnHitFeature;
 
+	
 };

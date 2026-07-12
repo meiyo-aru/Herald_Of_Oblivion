@@ -14,6 +14,7 @@
 #include "Core/SkillInstance.h"
 #include "Engine/AssetManager.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Subsystems/PoolingManager.h"
 
 
 void UExecutionSpawnProjectileFeature::LoadFXSync()
@@ -150,12 +151,24 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	FTransform SpawnTransform(EntityOwner->GetActorRotation(), StartLocation);
 
 	ASkillActor* SkillActor = SpawnSkillActor(EntityOwner, SpawnTransform);
-	InSkillContext.SkillActor = SkillActor;
 	if (!IsValid(SkillActor))
 	{
 		UE_LOG(LogTemp, Error, TEXT("UExecutionSpawnProjectileFeature::SpawnProjectile - Falha ao spawnar SkillActor."));
 		return;
 	}
+	
+	UNiagaraSystem* VFX;
+	if (LoadedExecutionEffect) 
+		VFX = LoadedExecutionEffect;
+	else 
+		VFX = ExecutionEffect.Get();
+
+	InSkillContext.SkillActor = SkillActor;
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+		{
+			SkillActor->NiagaraComponent = PoolingManager->GetNiagaraComponentFromPool(VFX);
+		}
 
 	SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
 	
@@ -163,31 +176,6 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		SkillActor->ConfigureCollisionComponent(this, EntityOwner);
 	
 	SkillActor->ProjectileMovementComponent->SetUpdatedComponent(SkillActor->CollisionComponent);
-		
-	// Se tiver componente de Niagara, configura-o
-	if (SkillActor->NiagaraComponent)
-	{
-		SkillActor->NiagaraComponent->SetAutoDestroy(true); 
-		SkillActor->NiagaraComponent->SetComponentTickEnabled(true);
-		SkillActor->NiagaraComponent->Activate();
-		
-		SkillActor->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
-		// Seta o objeto callback
-		SkillActor->NiagaraComponent->SetVariableObject(FName("CallbackObject"), SkillActor);
-			
-		UNiagaraSystem* VFX;
-		if (LoadedExecutionEffect) 
-			VFX = LoadedExecutionEffect;
-		else 
-			VFX = ExecutionEffect.Get();
-
-		if (!IsValid(VFX))
-		{
-			UE_LOG(LogTemp, Error, TEXT("ASkillActor::Initialize - VFX ExecutionEffect invalido para ExecutionFeature '%s'."), *GetNameSafe(this));
-			return;
-		}
-		SkillActor->NiagaraComponent->SetAsset(VFX);
-	}
 	
 	// Timer de vida máxima (fallback)
 	if (this->LifeSpan > 0.0f)
@@ -214,9 +202,6 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		SkillActor->ProjectileMovementComponent->UpdateComponentVelocity();
 		SkillActor->ProjectileMovementComponent->Activate(true);
 	}
-	
-	if (IsValid(SkillActor->NiagaraComponent))
-		SkillActor->NiagaraComponent->Activate();
 }
 
 void UExecutionSpawnProjectileFeature::ProccessParticles(const TArray<FBasicParticleData>& Data, FSkillContext& SkillContext)

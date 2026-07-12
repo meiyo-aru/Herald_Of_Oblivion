@@ -84,8 +84,8 @@ void APlayerClass::BeginPlay()
 		if (UWorld* World = GetWorld())
 		{
 			UE_LOG(LogTemp, Error, TEXT("ENTROU NO DEBAIXO DOGAO"));
-			UGameInstanceClass* GI = Cast<UGameInstanceClass>(World->GetGameInstance());
-			GI->InitializeNewPlayer(*this);
+			if (UGameInstanceClass* GI = Cast<UGameInstanceClass>(World->GetGameInstance()))
+				GI->InitializeNewPlayer(*this);
 		}
 	}
 }

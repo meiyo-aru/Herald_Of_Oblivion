@@ -10,6 +10,7 @@
 void UExecutionFeature::LoadFXSync()
 {
 	LoadedExecutionEffect = ExecutionEffect.LoadSynchronous();
+	WarmupNiagara(LoadedExecutionEffect);
 	LoadedExecutionSound = ExecutionSound.LoadSynchronous();
 }
 

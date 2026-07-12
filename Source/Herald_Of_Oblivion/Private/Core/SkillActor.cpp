@@ -13,6 +13,7 @@
 #include "Core/EquipmentActor.h"
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Subsystems/PoolingManager.h"
 
 
 // Sets default values
@@ -28,9 +29,6 @@ ASkillActor::ASkillActor()
 	// Criar o movimento já no construtor
 	this->ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(FName("Projectile Movement Component"));
 	this->ProjectileMovementComponent->bAutoActivate = false; // Só ativa quando dermos a velocidade}
-	
-	this->NiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>(FName("Niagara Component"));
-	this->NiagaraComponent->SetupAttachment(GetRootComponent());
 }
 
 // Esta função será chamada automaticamente pelo Niagara! Usada para executar lógica para cada partícula individualmente
@@ -79,7 +77,6 @@ void ASkillActor::BeginDestroy()
 		this->NiagaraComponent->Deactivate();
 	}
 	Super::BeginDestroy();
-	
 }
 // Called every frame
 void ASkillActor::Tick(float DeltaTime)
@@ -89,7 +86,13 @@ void ASkillActor::Tick(float DeltaTime)
 
 void ASkillActor::OnNiagaraSystemFinished(UNiagaraComponent* NC)
 {
-	Destroy();
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+		{
+			NC->OnSystemFinished.RemoveAll(this);
+			PoolingManager->SaveNiagaraInPool(NC);
+			this->NiagaraComponent = nullptr;
+		}
 	UE_LOG(LogTemp,Warning, TEXT("Skill Actor Destroyed!"));
 }
 
@@ -108,12 +111,12 @@ void ASkillActor::Initialize(USkillInstance* InInstance, AEntityClass* InEntity,
 	if (this->NiagaraComponent)
 	{
 		this->NiagaraComponent->OnSystemFinished.AddDynamic(this, &ASkillActor::OnNiagaraSystemFinished);
-		this->NiagaraComponent->SetAutoDestroy(true);
-		this->NiagaraComponent->SetComponentTickEnabled(true);
-		this->NiagaraComponent->Activate();
-		
-		// Seta o objeto callback
 		this->NiagaraComponent->SetVariableObject(FName("CallbackObject"), this);
+		this->NiagaraComponent->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
+		this->NiagaraComponent->Activate(true);
+		this->NiagaraComponent->SetVisibility(true);
+		this->NiagaraComponent->SetAbsolute(false,false,false);
+		this->NiagaraComponent->AttachToComponent(CollisionComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 	}
 }
 

@@ -12,6 +12,7 @@
 void UActivationFeature::LoadFXSync()
 {
 	LoadedActivationEffect = ActivationEffect.LoadSynchronous();
+	WarmupNiagara(LoadedActivationEffect);
 	LoadedSoundCue = ActivationSound.LoadSynchronous();
 }
 

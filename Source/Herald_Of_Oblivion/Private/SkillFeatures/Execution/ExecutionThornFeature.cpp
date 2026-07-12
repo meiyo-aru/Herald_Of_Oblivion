@@ -13,6 +13,7 @@
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Subsystems/PoolingManager.h"
 
 void UExecutionThornFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
@@ -106,7 +107,12 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 	
 	ASkillActor* SkillActor = SpawnSkillActor(EntityOwner, SpawnTransform);
 	InSkillContext.SkillActor = SkillActor;
-	SkillActor->NiagaraComponent->SetAsset(VFX);
+	
+	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+		{
+			SkillActor->NiagaraComponent = PoolingManager->GetNiagaraComponentFromPool(VFX);
+		}	
 	SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
 	
 	if (IsValid(SkillActor->NiagaraComponent) && SkillActor->NiagaraComponent->GetAsset() != nullptr)

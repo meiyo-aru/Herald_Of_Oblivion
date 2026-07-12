@@ -16,6 +16,7 @@ void UOnHitSurfaceExplosion::LoadFXSync()
 	Super::LoadFXSync();
 	
 	LoadedOnHitEffect = OnHitEffect.LoadSynchronous();
+	WarmupNiagara(LoadedOnHitEffect);
 	LoadedOnHitSound = OnHitSound.LoadSynchronous();
 }
 
@@ -39,6 +40,11 @@ void UOnHitSurfaceExplosion::Execute(FSkillContext& InSkillContext)
 		if (InSkillContext.HitOverlapResult.HitResult.bBlockingHit)
 		{
 			UNiagaraComponent* Niagara = SpawnVFXAtLocation(VFX, UKismetMathLibrary::MakeRotFromZ(InSkillContext.HitOverlapResult.HitResult.ImpactNormal), InSkillContext.HitOverlapResult.HitResult.ImpactPoint, InSkillContext);
+			if (!Niagara)
+			{
+				UE_LOG(LogTemp, Error, TEXT("UOnHitSurfaceExplosion - Falha ao spawnar Niagara."));
+				return;
+			}
 			Niagara->SetFloatParameter(FName("ExplosionRadius"), ExplosionRadius);
 			Niagara->SetFloatParameter(FName("ExplosionTemperature"), ExplosionTemperature);
 			Niagara->SetVectorParameter(FName("ExplosionIntensityScale"), ExplosionIntensityScale);

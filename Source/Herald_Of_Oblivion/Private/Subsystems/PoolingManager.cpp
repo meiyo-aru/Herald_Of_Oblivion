@@ -2,26 +2,28 @@
 
 
 #include "Subsystems/PoolingManager.h"
+
+#include "NiagaraSystem.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
 #include "Core/EffectInstance.h"
 #include "Core/EquipmentActor.h"
 #include "Core/EquipmentInstance.h"
 #include "Core/ItemInstance.h"
+#include "Core/SaveGameClass.h"
 #include "Core/SkillActor.h"
 #include "Core/SkillInstance.h"
+#include "Kismet/GameplayStatics.h"
 
-FObjectsStruct::FObjectsStruct()
-{
-}
+FNiagaraComponentsStruct::FNiagaraComponentsStruct(const TArray<UNiagaraComponent*>& InNiagaraComponents)
+	: NiagaraComponents(InNiagaraComponents)
+{}
 
-FObjectsStruct::FObjectsStruct(const TArray<TObjectPtr<UObject>>& InObjects)
+FObjectsStruct::FObjectsStruct(const TArray<UObject*>& InObjects)
 	: Objects(InObjects)
 {}
 
-FActorsStruct::FActorsStruct()
-{
-}
-
-FActorsStruct::FActorsStruct(const TArray<TObjectPtr<AActor>>& InActors)
+FActorsStruct::FActorsStruct(const TArray<AActor*>& InActors)
 	: Actors(InActors)
 {}
 
@@ -29,14 +31,13 @@ void UPoolingManager::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	PopulateObjectPool(UEquipmentInstance::StaticClass(), 40);
-	PopulateObjectPool(UItemInstance::StaticClass(), 40);
-	PopulateObjectPool(USkillInstance::StaticClass(), 40);
-	PopulateObjectPool(UEffectInstance::StaticClass(), 40);
+	PopulateObjectPool(UEquipmentInstance::StaticClass(), 20);
+	PopulateObjectPool(UItemInstance::StaticClass(), 20);
+	PopulateObjectPool(UEffectInstance::StaticClass(), 20);
 	
-	PopulateActorPool(AEquipmentActor::StaticClass(), 40);
-	PopulateActorPool(AItemActor::StaticClass(), 40);
-	PopulateActorPool(ASkillActor::StaticClass(), 80);
+	PopulateActorPool(AEquipmentActor::StaticClass(), 20);
+	PopulateActorPool(AItemActor::StaticClass(), 20);
+	PopulateActorPool(ASkillActor::StaticClass(), 20);
 }
 
 AActor* UPoolingManager::GetActorFromPool(const TSubclassOf<AActor> Class)
@@ -56,12 +57,12 @@ AActor* UPoolingManager::GetActorFromPool(const TSubclassOf<AActor> Class)
 	
 	if (!StructActors.Actors.IsEmpty())
 	{
-			AActor* ReleasedActor = StructActors.Actors.Pop();
-			ActiveActors.Add(ReleasedActor);
-			ReleasedActor->SetActorHiddenInGame(false);
-			ReleasedActor->SetActorEnableCollision(true);
-			UE_LOG(LogTemp, Log, TEXT("Found Actor %s"), *ReleasedActor->GetName());
-			return ReleasedActor;
+		AActor* ReleasedActor = StructActors.Actors.Pop();
+		ActiveActors.Add(ReleasedActor);
+		ReleasedActor->SetActorHiddenInGame(false);
+		ReleasedActor->SetActorEnableCollision(true);
+		UE_LOG(LogTemp, Log, TEXT("Found Actor %s"), *ReleasedActor->GetName());
+		return ReleasedActor;
 	} 
 	UE_LOG(LogTemp, Log, TEXT("No Actor found"));
 	return nullptr;
@@ -147,11 +148,18 @@ void UPoolingManager::PopulateObjectPool(const TSubclassOf<UObject> Class, int8 
 		TArray<TObjectPtr<UObject>>	Objects;
 		// Aloca a memória do Array de uma vez para evitar realocações no loop
 		Objects.Reserve(Amount);
-
+		
 		// Loop para popular o pool com Objects
 		for (int32 i = 0; i < Amount; ++i)
 		{
-			UObject* Instance = NewObject<UObject>(this, Class);
+			UObject* Instance;
+			if (Class == USkillInstance::StaticClass())
+			{
+				
+			} else
+			{
+				Instance = NewObject<UObject>(this, Class);
+			}
 			Objects.Add(Instance);
 		}
 		
@@ -169,10 +177,19 @@ void UPoolingManager::SaveObjectInPool(TSubclassOf<UObject> ObjectClass, UObject
 	if (FObjectsStruct* ObjectsStructPtr = ObjectsPool.Find(ObjectClass))
 	{
 		ObjectsStructPtr->Objects.Add(ObjectToSave);
-		ActiveObjects.Remove(ObjectToSave);
+		if (ActiveObjects.Find(ObjectToSave))
+			ActiveObjects.Remove(ObjectToSave);
+		
+		UE_LOG(LogTemp, Warning, TEXT("Save object %s in pool"), ObjectToSave ? *ObjectToSave->GetName() : TEXT(""));
 	} else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No ObjectStruct for this class %s found in pool."), ObjectClass ? *ObjectClass->GetName() : TEXT(""));
+		FObjectsStruct ObjectsStruct = FObjectsStruct(TArray<UObject*>({ObjectToSave}));
+		ObjectsPool.Add(ObjectClass, ObjectsStruct);
+		
+		if (ActiveObjects.Find(ObjectToSave))
+			ActiveObjects.Remove(ObjectToSave);
+
+		UE_LOG(LogTemp, Warning, TEXT("Save Object %s in pool"), ObjectToSave ? *ObjectToSave->GetName() : TEXT(""));
 	}
 }
 
@@ -184,6 +201,87 @@ void UPoolingManager::SaveActorInPool(TSubclassOf<AActor> ActorClass, AActor* Ac
 		ActiveActors.Remove(ActorToSave);
 	} else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No ObjectStruct for this class %s found in pool."), ActorClass ? *ActorClass->GetName() : TEXT(""));
+		FActorsStruct ActorsStruct = FActorsStruct(TArray<AActor*>({ActorToSave}));
+		ActorsPool.Add(ActorClass, ActorsStruct);
+		
+		if (ActiveActors.Find(ActorToSave))
+			ActiveActors.Remove(ActorToSave);
+
+		UE_LOG(LogTemp, Warning, TEXT("Save Actor %s in pool"), ActorToSave ? *ActorToSave->GetName() : TEXT(""));
 	}
+}
+
+void UPoolingManager::SaveNiagaraInPool(UNiagaraComponent* Niagara)
+{
+	if (IsValid(Niagara))
+	{
+		Niagara->SetVisibility(false);
+		Niagara->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+		Niagara->SetRelativeLocation(FVector::ZeroVector);
+		Niagara->SetRelativeRotation(FRotator::ZeroRotator);
+		Niagara->SetWorldLocation(FVector::ZeroVector);
+		Niagara->SetWorldRotation(FRotator::ZeroRotator);
+		
+		if (FNiagaraComponentsStruct* NiagaraComponentsStructPtr = NiagaraComponentPool.Find(Niagara->GetAsset()->GetFName()))
+		{
+			NiagaraComponentsStructPtr->NiagaraComponents.Add(Niagara);
+			UE_LOG(LogTemp, Warning, TEXT("PPPPPPLLLLL"));
+		}
+		else
+		{
+			FNiagaraComponentsStruct NiagaraStruct = FNiagaraComponentsStruct(TArray<UNiagaraComponent*>({Niagara}));
+			NiagaraComponentPool.Add(Niagara->GetAsset()->GetFName(), NiagaraStruct);
+			UE_LOG(LogTemp, Warning, TEXT("COOOOOOO"));
+		}
+		
+		if (ActiveNiagaraComponents.Find(Niagara))
+			ActiveNiagaraComponents.Remove(Niagara);
+		
+		UE_LOG(LogTemp, Warning, TEXT("Save Niagara %s in pool"), *Niagara->GetAsset()->GetFName().ToString());
+	}
+}
+
+
+UNiagaraComponent* UPoolingManager::GetNiagaraComponentFromPool(UNiagaraSystem* NiagaraSystem)
+{
+	FName NiagaraName = NiagaraSystem->GetFName();
+	
+	FNiagaraComponentsStruct* StructNiagaraPtr = NiagaraComponentPool.Find(NiagaraName);
+	
+	UE_LOG(LogTemp, Log, TEXT("Quantidade de %i Niagaras"), StructNiagaraPtr ? StructNiagaraPtr->NiagaraComponents.Num() : 0);
+	
+	if (!StructNiagaraPtr || (StructNiagaraPtr && StructNiagaraPtr->NiagaraComponents.IsEmpty()))
+	{
+		UE_LOG(LogTemp, Log, TEXT("No Pool registered for this Niagara: %s \nCreating new Niagara for the Pool..."), *NiagaraName.ToString());
+	
+		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+			if (IsValid(NiagaraSystem))
+				if (UNiagaraComponent* NC = UNiagaraFunctionLibrary::SpawnSystemAtLocation(World,
+					NiagaraSystem, 
+					FVector::ZeroVector,
+					FRotator::ZeroRotator, 
+					FVector(1), 
+					false,
+					false,
+					ENCPoolMethod::None))
+				{
+					NC->SetVisibility(false);
+					ActiveNiagaraComponents.Add(NC);
+					UE_LOG(LogTemp, Log, TEXT("Created Niagara %s"), *NC->GetName());
+					return NC;
+				}
+	} 
+	
+	
+	if (StructNiagaraPtr && !StructNiagaraPtr->NiagaraComponents.IsEmpty())
+	{
+		UNiagaraComponent* ReleasedNiagara = StructNiagaraPtr->NiagaraComponents.Pop();
+		ActiveNiagaraComponents.Add(ReleasedNiagara);
+		UE_LOG(LogTemp, Log, TEXT("Found Niagara %s"), *ReleasedNiagara->GetName());
+		
+		return ReleasedNiagara;
+	} 
+	
+	UE_LOG(LogTemp, Log, TEXT("No Object %s found"), *NiagaraName.ToString()); 
+	return nullptr;
 }

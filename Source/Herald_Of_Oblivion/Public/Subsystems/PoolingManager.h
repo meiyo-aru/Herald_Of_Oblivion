@@ -3,21 +3,32 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NiagaraSystem.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "PoolingManager.generated.h"
+class UNiagaraComponent;
 class USpecializationDataAsset;
 class AItemActor;
 class UObject;
 class AActor;
 
 USTRUCT()
+struct FNiagaraComponentsStruct
+{
+	GENERATED_BODY()
+	UPROPERTY()
+	TArray<TObjectPtr<UNiagaraComponent>> NiagaraComponents;	
+	FNiagaraComponentsStruct(){};
+	explicit FNiagaraComponentsStruct(const TArray<UNiagaraComponent*>& InNiagaraComponents);
+};
+USTRUCT()
 struct FObjectsStruct
 {
 	GENERATED_BODY()
 	UPROPERTY()
 	TArray<TObjectPtr<UObject>> Objects;	
-	FObjectsStruct();
-	explicit FObjectsStruct(const TArray<TObjectPtr<UObject>>& InObjects);
+	FObjectsStruct(){};
+	explicit FObjectsStruct(const TArray<UObject*>& InObjects);
 };
 USTRUCT()
 struct FActorsStruct
@@ -25,8 +36,8 @@ struct FActorsStruct
 	GENERATED_BODY()
 	UPROPERTY()
 	TArray<TObjectPtr<AActor>> Actors;	
-	FActorsStruct();
-	explicit FActorsStruct(const TArray<TObjectPtr<AActor>>& InActors);
+	FActorsStruct(){};
+	explicit FActorsStruct(const TArray<AActor*>& InActors);
 };
 
 /**
@@ -55,6 +66,12 @@ public:
 	UPROPERTY()
 	TSet<TObjectPtr<UObject>> ActiveObjects;
 	
+	UPROPERTY()
+	TMap<FName, FNiagaraComponentsStruct> NiagaraComponentPool;
+	
+	UPROPERTY()
+	TSet<TObjectPtr<UNiagaraComponent>> ActiveNiagaraComponents;
+	
 	// Retorna um Objeto da classe especificada
 	AActor* GetActorFromPool(const TSubclassOf<AActor> Class);
 	UObject* GetObjectFromPool(const TSubclassOf<UObject> Class);
@@ -64,4 +81,6 @@ public:
 	void PopulateObjectPool(TSubclassOf<UObject> Class, int8 Amount);
 	void SaveObjectInPool(TSubclassOf<UObject> ObjectClass, UObject* ObjectToSave);
 	void SaveActorInPool(TSubclassOf<AActor> ActorClass, AActor* ActorToSave);
+	void SaveNiagaraInPool(UNiagaraComponent* Niagara);
+	UNiagaraComponent* GetNiagaraComponentFromPool(UNiagaraSystem* NiagaraSystem);
 };

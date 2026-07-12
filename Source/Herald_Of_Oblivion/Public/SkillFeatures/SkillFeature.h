@@ -52,12 +52,18 @@ public:
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) {};
 
+	// Aquece o niagara, spawnando ele invisivel para compilar os shaders
+	void WarmupNiagara(UNiagaraSystem* Niagara);
+	
 	// Para efeitos de habilidades em que nao quero criar um actor, apenas o niagara é necessário e ele precisa estar anexado a algum socket
 	UNiagaraComponent* SpawnAuraVFX(UNiagaraSystem* VFX, AEntityClass* InEntityOwner,
 	                                FSkillContext InSkillContext, EAuraType AuraType, USceneComponent* Target, FName AttachSocketName = NAME_None);
 	// Efeitos que precisa spawnar o skil actor
 	ASkillActor* SpawnSkillActor(AEntityClass* InEntityOwner, FTransform SpawnTransform);
-	UNiagaraComponent* SpawnVFXAtLocation(UNiagaraSystem* VFX, FRotator Rotation, FVector Location, FSkillContext& InSkillContext);
+	UNiagaraComponent* SpawnVFXAtLocation(UNiagaraSystem* Niagara, FRotator Rotation, FVector Location, FSkillContext& InSkillContext);
+	
+	UFUNCTION()
+	void OnNiagaraSystemFinished(UNiagaraComponent* NiagaraComponent);
 
 	// Limpa o Niagara
 	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents);

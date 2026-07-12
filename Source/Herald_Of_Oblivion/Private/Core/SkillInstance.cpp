@@ -16,7 +16,6 @@ USkillInstance::USkillInstance()
 {
 }
 
-
 void USkillInstance::BeginDestroy()
 {
 	Super::BeginDestroy();

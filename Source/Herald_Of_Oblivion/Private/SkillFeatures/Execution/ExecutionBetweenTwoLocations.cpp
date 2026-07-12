@@ -11,6 +11,7 @@
 #include "Core/SkillActor.h"
 #include "Core/SkillInstance.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Subsystems/PoolingManager.h"
 
 void UExecutionBetweenTwoLocations::LoadFXSync()
 {
@@ -56,13 +57,18 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 				? UKismetMathLibrary::MakeRotFromZ(SurfaceNormal)
 				: FRotator::ZeroRotator;
 		else SpawnRotation = FRotator::ZeroRotator;
-
 		
 		FTransform SpawnTransform(SpawnRotation, bSpawnOnEndLocation ? InSkillContext.EndLocation : InSkillContext.StartLocation);
 
 		ASkillActor* SkillActor = SpawnSkillActor(EntityOwner, SpawnTransform);
 		InSkillContext.SkillActor = SkillActor;
-		SkillActor->NiagaraComponent->SetAsset(VFX);
+		
+		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+			if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+			{
+				SkillActor->NiagaraComponent = PoolingManager->GetNiagaraComponentFromPool(VFX);
+			}
+		
 		SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
 		
 		TArray<FOverlapResult> OverlapResults;
