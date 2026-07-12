@@ -24,7 +24,10 @@ void USkillFeature::WarmupNiagara(UNiagaraSystem* Niagara)
 				false,
 				ENCPoolMethod::None))
 			{
-				
+				NC->SetVisibility(false);
+				NC->Activate(true);
+				NC->AdvanceSimulation(1.0f/60.0f, 2);
+				NC->DeactivateImmediate();
 				if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
 					PoolingManager->SaveNiagaraInPool(NC);
 			}
@@ -39,6 +42,7 @@ UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, AEntityClass
 	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
 		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+		{
 			if (UNiagaraComponent* Niagara = PoolingManager->GetNiagaraComponentFromPool(VFX))
 			{
 				Niagara->SetAbsolute(false, false, false); 
@@ -77,6 +81,7 @@ UNiagaraComponent* USkillFeature::SpawnAuraVFX(UNiagaraSystem* VFX, AEntityClass
 				}
 				return Niagara;
 			}
+		}
 	}
 	return nullptr;
 }

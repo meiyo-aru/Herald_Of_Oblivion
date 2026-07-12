@@ -60,126 +60,128 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 		
 		FTransform SpawnTransform(SpawnRotation, bSpawnOnEndLocation ? InSkillContext.EndLocation : InSkillContext.StartLocation);
 
-		ASkillActor* SkillActor = SpawnSkillActor(EntityOwner, SpawnTransform);
-		InSkillContext.SkillActor = SkillActor;
-		
-		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
-			if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
-			{
-				SkillActor->NiagaraComponent = PoolingManager->GetNiagaraComponentFromPool(VFX);
-			}
-		
-		SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
-		
-		TArray<FOverlapResult> OverlapResults;
-		
-		if (bUseStartLocation && bUseEndLocation)
+		if (ASkillActor* SkillActor = SpawnSkillActor(EntityOwner, SpawnTransform))
 		{
-			SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(InSkillContext.StartLocation, InSkillContext.EndLocation));
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), InSkillContext.StartLocation);
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.EndLocation);
-			FVector Direction = (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal();
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), Direction);
+			InSkillContext.SkillActor = SkillActor;
 			
-			float Distance = FVector::Dist(InSkillContext.StartLocation, InSkillContext.EndLocation) + 30;
+			if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+				if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
+				{
+					SkillActor->NiagaraComponent = PoolingManager->GetNiagaraComponentFromPool(VFX);
+				}
 			
-			FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+			SkillActor->Initialize(SkillInstance, EntityOwner, InSkillContext);
 			
-			FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
-			FVector Center = InSkillContext.StartLocation + ((Distance / 2) * Direction);
+			TArray<FOverlapResult> OverlapResults;
 			
-			OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
-		} else if (!bUseStartLocation && !bUseEndLocation)
-		{
-			if (APlayerClass* Char = Cast<APlayerClass>(EntityOwner))
+			if (bUseStartLocation && bUseEndLocation)
 			{
-				FVector SpawnLocation = bSpawnOnEndLocation ? InSkillContext.EndLocation : InSkillContext.StartLocation;
+				SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(InSkillContext.StartLocation, InSkillContext.EndLocation));
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), InSkillContext.StartLocation);
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.EndLocation);
+				FVector Direction = (InSkillContext.EndLocation - InSkillContext.StartLocation).GetSafeNormal();
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), Direction);
 				
-				FVector RightVector = Char->GetCameraComponent()->GetRightVector().GetSafeNormal() * MaxLenght;
+				float Distance = FVector::Dist(InSkillContext.StartLocation, InSkillContext.EndLocation) + 30;
 				
-				FVector StartLocation = SpawnLocation - RightVector/2;
-				FVector EndLocation = SpawnLocation + RightVector/2;
-				
-				FVector Direction = (EndLocation - StartLocation).GetSafeNormal();
-				
-				float Distance = FVector::Dist(StartLocation, EndLocation) + 30;
-			
 				FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
-			
+				
+				FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
+				FVector Center = InSkillContext.StartLocation + ((Distance / 2) * Direction);
+				
+				OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
+			} else if (!bUseStartLocation && !bUseEndLocation)
+			{
+				if (APlayerClass* Char = Cast<APlayerClass>(EntityOwner))
+				{
+					FVector SpawnLocation = bSpawnOnEndLocation ? InSkillContext.EndLocation : InSkillContext.StartLocation;
+					
+					FVector RightVector = Char->GetCameraComponent()->GetRightVector().GetSafeNormal() * MaxLenght;
+					
+					FVector StartLocation = SpawnLocation - RightVector/2;
+					FVector EndLocation = SpawnLocation + RightVector/2;
+					
+					FVector Direction = (EndLocation - StartLocation).GetSafeNormal();
+					
+					float Distance = FVector::Dist(StartLocation, EndLocation) + 30;
+				
+					FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+				
+					FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
+					FVector Center = StartLocation + ((Distance / 2) * Direction);
+				
+					OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
+					
+					SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(StartLocation, EndLocation));
+					SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), StartLocation);
+					SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), EndLocation);
+					SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (EndLocation - StartLocation).GetSafeNormal());
+				}
+			} else if (!bUseStartLocation)
+			{
+				FVector StartLocation;
+				if (bUseRight)
+				{
+					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+					else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));
+				} else
+				{
+					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+					else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));
+				}
+				
+				FVector Direction = (InSkillContext.EndLocation - StartLocation).GetSafeNormal();
+					
+				float Distance = FVector::Dist(StartLocation, InSkillContext.EndLocation) + 30;
+				
+				FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+				
 				FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
 				FVector Center = StartLocation + ((Distance / 2) * Direction);
-			
+				
 				OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
-				
-				SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(StartLocation, EndLocation));
+				SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(StartLocation, InSkillContext.EndLocation));
 				SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), StartLocation);
-				SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), EndLocation);
-				SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (EndLocation - StartLocation).GetSafeNormal());
-			}
-		} else if (!bUseStartLocation)
-		{
-			FVector StartLocation;
-			if (bUseRight)
-			{
-				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-					StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
-				else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.EndLocation);
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (InSkillContext.EndLocation - StartLocation).GetSafeNormal());
 			} else
 			{
-				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-					StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
-				else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));
+				FVector EndLocation;
+				if (bUseRight)
+				{
+					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+					else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));					
+				} else
+				{
+					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+					else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));					
+				}
+				
+				FVector Direction = (EndLocation - InSkillContext.StartLocation).GetSafeNormal();
+					
+				float Distance = FVector::Dist(InSkillContext.StartLocation, EndLocation) + 30;
+				
+				FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
+				
+				FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
+				FVector Center = InSkillContext.StartLocation + ((Distance / 2) * Direction);
+				
+				OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
+				SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(InSkillContext.StartLocation, EndLocation));
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), EndLocation);
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.StartLocation);
+				SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (InSkillContext.StartLocation - EndLocation).GetSafeNormal());
 			}
 			
-			FVector Direction = (InSkillContext.EndLocation - StartLocation).GetSafeNormal();
-				
-			float Distance = FVector::Dist(StartLocation, InSkillContext.EndLocation) + 30;
-			
-			FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
-			
-			FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
-			FVector Center = StartLocation + ((Distance / 2) * Direction);
-			
-			OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
-			SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(StartLocation, InSkillContext.EndLocation));
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), StartLocation);
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.EndLocation);
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (InSkillContext.EndLocation - StartLocation).GetSafeNormal());
-		} else
-		{
-			FVector EndLocation;
-			if (bUseRight)
+			if (!OverlapResults.IsEmpty())
 			{
-				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-					EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
-				else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));					
-			} else
-			{
-				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-					EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
-				else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));					
+				InSkillContext.HitOverlapResult = FHitOverlapResult(OverlapResults);
+				InSkillContext.SkillInstance->OnSkillHitDelegate.Broadcast(InSkillContext);
 			}
-			
-			FVector Direction = (EndLocation - InSkillContext.StartLocation).GetSafeNormal();
-				
-			float Distance = FVector::Dist(InSkillContext.StartLocation, EndLocation) + 30;
-			
-			FVector Size = FVector(Distance / 2, CollisionDepth,CollisionHeight);
-			
-			FQuat RotationQuat = FQuat::FindBetweenVectors(Size.ForwardVector, Direction);
-			FVector Center = InSkillContext.StartLocation + ((Distance / 2) * Direction);
-			
-			OverlapResults = MakeOverlapBox(Size, RotationQuat, InSkillContext, Center);
-			SkillActor->NiagaraComponent->SetFloatParameter(FName("DistanceBetweenLocations"), FVector::Dist(InSkillContext.StartLocation, EndLocation));
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("StartLocation"), EndLocation);
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("EndLocation"), InSkillContext.StartLocation);
-			SkillActor->NiagaraComponent->SetVectorParameter(FName("Direction"), (InSkillContext.StartLocation - EndLocation).GetSafeNormal());
-		}
-		
-		if (!OverlapResults.IsEmpty())
-		{
-			InSkillContext.HitOverlapResult = FHitOverlapResult(OverlapResults);
-			InSkillContext.SkillInstance->OnSkillHitDelegate.Broadcast(InSkillContext);
 		}
 	}
 }

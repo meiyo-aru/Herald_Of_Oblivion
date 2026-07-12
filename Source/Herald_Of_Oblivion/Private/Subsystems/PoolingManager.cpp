@@ -215,7 +215,6 @@ void UPoolingManager::SaveNiagaraInPool(UNiagaraComponent* Niagara)
 {
 	if (IsValid(Niagara))
 	{
-		Niagara->SetVisibility(false);
 		Niagara->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
 		Niagara->SetRelativeLocation(FVector::ZeroVector);
 		Niagara->SetRelativeRotation(FRotator::ZeroRotator);

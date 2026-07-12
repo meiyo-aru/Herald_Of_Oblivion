@@ -58,14 +58,16 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 		
 		if (AuraEffect)
 		{
-			UNiagaraComponent* NC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::SkeletalMesh, EntityOwner->GetMesh(), NAME_None);
-			NC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
-			NC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
-			NC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
-			NC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
-			NC->Activate(true);
-			NC->SetAbsolute(false, false, false); 
-			InSkillContext.SpawnedNiagaraComponents.Add(NC);
+			if (UNiagaraComponent* NC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::SkeletalMesh, EntityOwner->GetMesh(), NAME_None))
+			{
+				NC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
+				NC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
+				NC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
+				NC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
+				NC->Activate(true);
+				NC->SetAbsolute(false, false, false); 
+				InSkillContext.SpawnedNiagaraComponents.Add(NC);
+			}
 		}
 	}
 	
