@@ -1,8 +1,10 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h" 
+#include "Engine/HitResult.h"
 #include "Engine/OverlapResult.h"
 #include "Enumerators/EntityEnums.h"
+#include "Templates/SubclassOf.h"
 #include "SkillStructs.generated.h"
 
 class USkillInstance;
@@ -38,6 +40,7 @@ enum class ESkillStage : uint8
 {
 	None UMETA(DisplayName = "None"),
 	Casting UMETA(DisplayName = "Casting"),
+	Activating UMETA(DisplayName = "Activating"),
 	InExecution UMETA(DisplayName = "InExecution"),
 	Hitting UMETA(DisplayName = "Hitting"),
 };
@@ -127,10 +130,6 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	TArray<FOverlapResult> OverlapResults;*/
 	
-	// Controla se a skill foi ativada ou não, ativar significa que a skill foi spawnada no mundo e lançada
-	UPROPERTY()
-	bool bActivated = false;
-	
 	// O normal da superfície, serve para rotacionar o vfx para correponder a superficie
 	UPROPERTY()
 	FVector_NetQuantizeNormal StartSurfaceNormal;
@@ -148,11 +147,11 @@ public:
 	
 	// Tempo ao apertar o botão
 	UPROPERTY()
-	float CastTime = 0.0f;
+	float InitChargeTime = 0.0f;
 	
 	// Tempo ao soltar o botão
 	UPROPERTY()
-	float ReleasedTime = 0.0f;
+	float EndChargeTime = 0.0f;
 	
 	// Tempo total que o botão ficou pressionado
 	UPROPERTY()

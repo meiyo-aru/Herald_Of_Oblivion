@@ -22,10 +22,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+private:
+	// A instancia dona desse actor
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UEquipmentInstance> EquipmentInstanceOwner;
+	
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	
 	// Prepara o Actor para ir para o Pool
-	virtual void PrepareForPooling() override;
+	virtual void PrepareForPooling();
+	
+	virtual void Initialize(UEquipmentInstance* InEquipmentInstanceOwner);
+	
+	TWeakObjectPtr<UEquipmentInstance> GetEquipmentInstanceOwner() const {return EquipmentInstanceOwner;};
 };

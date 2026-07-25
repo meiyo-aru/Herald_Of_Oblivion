@@ -36,26 +36,42 @@ public:
 	FName GetEquipmentSocketName();
 	
 	// Define se haverá um componente de colisão
-	UPROPERTY(EditAnywhere, Category="Collision")
+	UPROPERTY(EditDefaultsOnly, Category="Collision")
 	bool bHaveCollisionComponent = false;
 	
 	// Tamanho da cápsula de colisão
-	UPROPERTY(EditAnywhere, Category="Collision")
+	UPROPERTY(EditDefaultsOnly, Category="Collision")
 	FVector CollisionSize = FVector::ZeroVector; 
 
 	// Tipo do item
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	EEquipmentType EquipmentType = EEquipmentType::None;
 
 	// Tipo de arma, caso seja uma
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="EquipmentType == EEquipmentType::Weapon", EditConditionHides))
+	UPROPERTY(EditDefaultsOnly, Category="Properties", meta=(EditCondition="EquipmentType == EEquipmentType::Weapon", EditConditionHides))
 	EWeaponType WeaponType = EWeaponType::None;
 
 	// Slot usado para equipar o item
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	EEquipmentSlot EquipmentSlot = EEquipmentSlot::None;
 	
 	// Feature que executa lógica ao atingir ou dar overlap em algo
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Features")
 	TArray<TObjectPtr<UOnHitFeature>> OnHitFeatures;
+
+	// Animação Idle da arma
+	UPROPERTY(EditDefaultsOnly, Category="Animation", meta=(EditCondition="EquipmentType == EEquipmentType::Weapon || EquipmentSlot == EEquipmentSlot::Shield", EditConditionHides))
+	TSoftObjectPtr<UAnimSequence> IdleAnimation;
+	
+	// Animação Walk da arma
+	UPROPERTY(EditDefaultsOnly, Category="Animation", meta=(EditCondition="EquipmentType == EEquipmentType::Weapon || EquipmentSlot == EEquipmentSlot::Shield", EditConditionHides))
+	TSoftObjectPtr<UAnimSequence> WalkAnimation;
+	
+	// Animação Run da arma
+	UPROPERTY(EditDefaultsOnly, Category="Animation", meta=(EditCondition="EquipmentType == EEquipmentType::Weapon || EquipmentSlot == EEquipmentSlot::Shield", EditConditionHides))
+	TSoftObjectPtr<UAnimSequence> RunAnimation;
+	
+	// Animação de Basic Attack da arma
+	UPROPERTY(EditDefaultsOnly, Category="Animation", meta=(EditCondition="EquipmentType == EEquipmentType::Weapon || EquipmentSlot == EEquipmentSlot::Shield", EditConditionHides))
+	TSoftObjectPtr<UAnimSequence> BasicAttackAnimation;
 };

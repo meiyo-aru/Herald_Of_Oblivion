@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
 #include "Enumerators/ItemEnums.h"
 #include "Enumerators/SkillEnums.h"
 #include "Structs/SkillStructs.h"
@@ -51,79 +52,73 @@ public:
 	USkillInstance* CreateInstance(AEntityClass* Owner);
 
 	// Nome da habilidade
-	UPROPERTY(EditAnywhere, Category="UI")
+	UPROPERTY(EditDefaultsOnly, Category="UI")
 	FText Name;
 	
 	// Raridade da habilidade
-	UPROPERTY(EditAnywhere, Category="UI", AssetRegistrySearchable)
+	UPROPERTY(EditDefaultsOnly, Category="UI", AssetRegistrySearchable)
 	ESkillRarityEnum Rarity = ESkillRarityEnum::None;
 	
 	// Categoria da habilidade
-	UPROPERTY(EditAnywhere, Category="UI", AssetRegistrySearchable)
+	UPROPERTY(EditDefaultsOnly, Category="UI", AssetRegistrySearchable)
 	ESkillCategoryEnum Category = ESkillCategoryEnum::None;
 	
 	// Tipo da habilidade
-	UPROPERTY(EditAnywhere, Category="UI", AssetRegistrySearchable)
+	UPROPERTY(EditDefaultsOnly, Category="UI", AssetRegistrySearchable)
 	ESkillTypeEnum Type = ESkillTypeEnum::None;
 	
 	// Nível mínimo da entidade
-	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable)
+	UPROPERTY(EditDefaultsOnly, Category="Properties", AssetRegistrySearchable)
 	uint8 MinimumLevel = 0;
-	
-	// Booleano se a skill é ou não uma skill inicial, isto é, se o jogador começa com ela
-	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable)
-	bool bIsInitial = false;
 	
 	// ESkillTagsEnum Tags;
 	
 	// A especialização(classe) da habilidade, exemplo: Guerreiro, Mago.
-	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable, meta = (AssetBundle = "UI"))
+	UPROPERTY(EditDefaultsOnly, Category="Properties", AssetRegistrySearchable, meta = (AssetBundle = "UI"))
 	ESpecializationEnum Specialization;
 	
 	// Descrição da habilidade
-	UPROPERTY(EditAnywhere, Category="UI")
+	UPROPERTY(EditDefaultsOnly, Category="UI")
 	FText Description;
 	
 	// O custo de uso da habilidade.
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	FResourceCost Cost;
 	
-	
 	// O tempo de recarga da habilidade
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	float Cooldown = 0.0f;
 	
-	// Tempo de lançamento, algumas habilidades precisam ser preparadas antes de lançadas (mesmo que não sejam de carga), 
+	// Tempo de lançamento, as habilidades precisam ser preparadas antes de lançadas (mesmo que não sejam de carga), 
 	// cada habilidade pode usar um atributo diferente para reduzir seu tempo de cast
-	UPROPERTY(EditAnywhere, Category="Properties")
-	float CastTime = 0.0f;
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
+	float MaxCastTime = 0.0f;
 
 	// Multiplicador do redutor de tempo de lançamento, de 0.0 a 1.0 indica quanto o atributo redutor vai influenciar
 	// no casttime. 1.0 significa que 50 de força resultará em uma redução de 50%
-	UPROPERTY(EditAnywhere, Category="Properties")
-	float MultiplierReduceCastTime = 1.0f;
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
+	float MultiplierReduceCastTime = 0.0f;
 	
 	// Atributo que reduz o tempo de cast da habilidade
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	EEntitySimbolicAttributeEnum ReduceCastTimeAttribute = EEntitySimbolicAttributeEnum::None;
 	
 	// Define se a skill precisa de uma arma equipada e seu tipo
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	bool bWeaponIsNecessary = false;
-	UPROPERTY(EditAnywhere, Category="Properties", AssetRegistrySearchable, meta=(EditCondition="bWeaponIsNecessary", EditConditionHides))
+	
+	UPROPERTY(EditDefaultsOnly, Category="Properties", AssetRegistrySearchable, meta=(EditCondition="bWeaponIsNecessary", EditConditionHides))
 	EWeaponType WeaponType = EWeaponType::None;
 	
 	// O icone da habilidade
-	UPROPERTY(EditAnywhere, Category="UI", meta = (AssetBundles = "UI"))
+	UPROPERTY(EditDefaultsOnly, Category="UI", meta = (AssetBundles = "UI"))
 	TSoftObjectPtr<UTexture2D> Icon;
 	
 	// Features da skill
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Features")
 	TObjectPtr<UActivationFeature> ActivationFeature;
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Features")
 	TObjectPtr<UExecutionFeature> ExecutionFeature;
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Features")
 	TArray<TObjectPtr<UOnHitFeature>> OnHitFeature;
-
-	
 };

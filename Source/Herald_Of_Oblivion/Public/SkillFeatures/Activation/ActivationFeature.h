@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Enumerators/ItemEnums.h"
 #include "SkillFeatures/SkillFeature.h"
 #include "ActivationFeature.generated.h"
 
@@ -11,6 +12,7 @@
  * Feature pai de todas as features do tipo activation 
  */
 
+class UAnimSequenceBase;
 class UNiagaraComponent;
 class UNiagaraSystem;
 class USoundCue;
@@ -21,7 +23,10 @@ class HERALD_OF_OBLIVION_API UActivationFeature : public USkillFeature
 	GENERATED_BODY()
 	
 public:
-	FTimerHandle TimerHandle;
+	UPROPERTY(Transient)
+	FTimerHandle PrematureCompleteActivationTimerHandle;
+	UPROPERTY(Transient)
+	FTimerHandle CastTimerHandle;
 	
 	// Controla o raio da mira, quanto menor, mais preciso
 	UPROPERTY(EditAnywhere, Category="Aim")
@@ -32,6 +37,8 @@ public:
 
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
+	void CastOnHands(FSkillContext& InSkillContext, USkillInstance* SkillInstance, AEntityClass* EntityOwner,
+	                 TObjectPtr<UNiagaraSystem>* FX, EEquipmentSlot Hand);
 
 	// Retorna um HitResult baseado na visão do jogador
 	FHitResult GetAimTarget(FSkillContext& InContext, float InAimRadius) const;
@@ -44,19 +51,41 @@ public:
 	// Lógica de ativação inicial e final
 	virtual void StartActivation(FSkillContext& InSkillContext);	
 	virtual void CompleteActivation(FSkillContext& InSkillContext);	
-
+	
+	// O Animation Montage de Cast da habilidade
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast", meta = (AssetBundles = "FX"))
+	TSoftObjectPtr<UAnimSequenceBase> CastAnimation;
+	// O Niagara de Cast da habilidade
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast", meta = (AssetBundles = "FX"))
+	TSoftObjectPtr<UNiagaraSystem> CastEffect;
+	// O Sound de Cast da habilidade
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast", meta = (AssetBundles = "FX"))
+	TSoftObjectPtr<USoundCue> CastSound;
+	
+	// Define se os efeitos de Cast sao anexados a entidade
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	bool bCastOnForwardFollowOwner = false;
+	// Define se o cast vai ser feito no socket forward da entidade
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	bool bCastOnForward = false;
+	
+	
+	// Define se os efeitos de Cast sao anexados a entidade
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	bool bCastOnHandsFollowOwner = false;
+	// Define que o cast vai ser feito na mao direita
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	bool bCastOnRightHand = false;
+	// Define que o cast vai ser feito na mao esquerda
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	bool bCastOnLeftHand = false;
 	
 	// Efeito de Ativação
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "FX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> ActivationEffect;
-	UPROPERTY()
-	TObjectPtr<UNiagaraSystem> LoadedActivationEffect = nullptr;
-
 	// Som de Ativação
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "FX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<USoundCue> ActivationSound;
-	UPROPERTY()
-	TObjectPtr<USoundCue> LoadedSoundCue = nullptr;
 
 };
 

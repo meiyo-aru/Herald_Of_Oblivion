@@ -6,10 +6,13 @@
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
 #include "Character/PlayerClass.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Core/EntityClass.h"
 #include "Core/EquipmentActor.h"
 #include "Core/SkillActor.h"
 #include "Core/SkillInstance.h"
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Subsystems/PoolingManager.h"
 
@@ -42,8 +45,10 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 	}
 	
 	UNiagaraSystem* VFX;
-	if (LoadedExecutionEffect) 
-		VFX = LoadedExecutionEffect;
+	TObjectPtr<UNiagaraSystem>* CachedExecutionEffect = CachedEffects.Find(FName("ExecutionEffect"));
+
+	if (CachedExecutionEffect) 
+		VFX = *CachedExecutionEffect;
 	else 
 		VFX = ExecutionEffect.Get();
 
@@ -123,12 +128,12 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 				if (bUseRight)
 				{
 					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
 					else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));
 				} else
 				{
 					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
 					else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));
 				}
 				
@@ -152,12 +157,12 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 				if (bUseRight)
 				{
 					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
 					else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));					
 				} else
 				{
 					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Cast"));
+						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
 					else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));					
 				}
 				

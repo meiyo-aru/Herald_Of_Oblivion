@@ -3,8 +3,13 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Core/EntityClass.h"
 #include "Core/SkillActor.h"
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
+#include "Engine/StaticMesh.h"
 #include "Structs/SkillStructs.h"
 #include "Subsystems/PoolingManager.h"
 

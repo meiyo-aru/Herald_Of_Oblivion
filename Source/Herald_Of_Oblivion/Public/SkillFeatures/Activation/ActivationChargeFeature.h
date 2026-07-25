@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/TimerHandle.h"
 #include "SkillFeatures/Activation/ActivationFeature.h"
+#include "UObject/SoftObjectPtr.h"
 #include "ActivationChargeFeature.generated.h"
 
 /**
@@ -36,6 +38,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge")
 	bool bChargeOnRightHand = false;
 
+	// Skill carregada bem na frente do personagem, no Socket de PrimaryChargeSocket
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge",  meta=(EditCondition="!bChargeOnLeftHand && !bChargeOnRightHand", EditConditionHides))
+	bool bChargeOnForward = false;
+
 	// Tempo de carga máximo da habilidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge")
 	float MaxChargeTime = 0.0f;
@@ -54,54 +60,45 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta=(EditCondition="bChargeFollowAim && bChargeOnTarget", EditConditionHides))
 	float RateToFollow = 0.5f;
 	
+	UPROPERTY(Transient)
 	FTimerHandle TimerHandleChargeFollowAim;
-
 	
 	// Define se a habilidade possui aura ao ser Carregada
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura")
 	bool bAura = false;
 	// Define se a entidade terá efeito de aura
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta=(EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta=(EditCondition="bAura", EditConditionHides))
 	bool bAuraInEntityOwner = false;
 	// Define se a arma terá efeito de aura
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta=(EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta=(EditCondition="bAura", EditConditionHides))
 	bool bAuraInWeapon = false;
 	
 	// O VFX da aura da entidade
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta = (AssetBundles = "FX", EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta = (AssetBundles = "FX", EditCondition="bAura", EditConditionHides))
 	TSoftObjectPtr<UNiagaraSystem> EntityOwnerAuraEffect;
-	UPROPERTY()
-	TObjectPtr<UNiagaraSystem> LoadedEntityOwnerAuraEffect = nullptr;
 	
 	// O VFX da aura da arma
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta = (AssetBundles = "FX", EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta = (AssetBundles = "FX", EditCondition="bAura", EditConditionHides))
 	TSoftObjectPtr<UNiagaraSystem> WeaponAuraEffect;
-	UPROPERTY()
-	TObjectPtr<UNiagaraSystem> LoadedWeaponAuraEffect = nullptr;
 	
 	// Efeito de Ativação que segue a mira
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
 	TSoftObjectPtr<UNiagaraSystem> ActivationFollowingAimEffect;
-	UPROPERTY()
-	TObjectPtr<UNiagaraSystem> LoadedActivationFollowingAimEffect = nullptr;
 
 	// Som de Ativação que segue a mira
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation FX", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
 	TSoftObjectPtr<USoundCue> ActivationFollowingAimSound;
-	UPROPERTY()
-	TObjectPtr<USoundCue> LoadedActivationFollowingAimSound = nullptr;
 	
 	// Quantidade de párticulas
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta=(EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta=(EditCondition="bAura", EditConditionHides))
 	float SpawnRateAura = 0.0f;
 	// Localização relativa da aura
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta=(EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta=(EditCondition="bAura", EditConditionHides))
 	float NormalOffsetAura = 0.0f;
 	// lifetime mínimo
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta=(EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta=(EditCondition="bAura", EditConditionHides))
 	float MinLifeTimeAura = 0.0f;
 	// lifetime máximo
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura FX", meta=(EditCondition="bAura", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta=(EditCondition="bAura", EditConditionHides))
 	float MaxLifeTimeAura = 0.0f;
-	
 };

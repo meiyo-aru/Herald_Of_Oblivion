@@ -15,9 +15,12 @@ void UOnHitSurfaceExplosion::LoadFXSync()
 {
 	Super::LoadFXSync();
 	
-	LoadedOnHitEffect = OnHitEffect.LoadSynchronous();
-	WarmupNiagara(LoadedOnHitEffect);
-	LoadedOnHitSound = OnHitSound.LoadSynchronous();
+	UNiagaraSystem* CachedEffect = OnHitEffect.LoadSynchronous();
+	CachedEffects.Add(FName("OnHitEffect"), CachedEffect);
+	WarmupNiagara(CachedEffect);
+	
+	USoundCue* CachedSound = OnHitSound.LoadSynchronous();
+	CachedSounds.Add(FName("OnHitSound"), CachedSound);
 }
 
 void UOnHitSurfaceExplosion::Initialize(USkillInstance* Owner)
@@ -30,8 +33,10 @@ void UOnHitSurfaceExplosion::Execute(FSkillContext& InSkillContext)
 	Super::Execute(InSkillContext);
 	
 	UNiagaraSystem* VFX;
+	TObjectPtr<UNiagaraSystem>* LoadedOnHitEffect = CachedEffects.Find(FName("OnHitEffect"));
+
 	if (LoadedOnHitEffect) 
-		VFX = LoadedOnHitEffect;
+		VFX = *LoadedOnHitEffect;
 	else 
 		VFX = OnHitEffect.Get();
 

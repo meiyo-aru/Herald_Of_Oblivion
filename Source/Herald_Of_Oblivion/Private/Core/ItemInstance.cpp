@@ -11,10 +11,10 @@ UItemInstance::UItemInstance()
 {
 }
 
-void UItemInstance::Initialize(AEntityClass* InOwner, USkillDataAsset* InDataAsset, int8 InAmount)
+void UItemInstance::Initialize(AEntityClass* InOwner, UItemDataAsset* InDataAsset, int8 InAmount)
 {
 	EntityOwner = InOwner;
-	DataAsset = InDataAsset;
+	ItemDataAsset = InDataAsset;
 	Amount = InAmount;
 }
 

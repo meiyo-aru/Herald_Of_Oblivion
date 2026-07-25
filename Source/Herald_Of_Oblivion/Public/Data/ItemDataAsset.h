@@ -4,8 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "Enumerators/ItemEnums.h"
 #include "ItemDataAsset.generated.h"
+
+enum class EItemType : uint8;
 
 /**
  * UItemDataAsset
@@ -24,26 +25,26 @@ public:
 	}
 	
 	// O tipo do item
-	UPROPERTY(EditAnywhere, Category="Properties")
-	EItemType ItemType = EItemType::None;
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
+	EItemType ItemType;
 
 	// O nome do item
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	FText Name;
 	
 	// A descrição do item
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	FText Description;
 	
 	// Define se é consumível
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	bool bConsumable = false;
 	
 	// A mesh do item
-	UPROPERTY(EditAnywhere, Category="Properties", meta = (AssetBundles = "StaticMesh"))
+	UPROPERTY(EditDefaultsOnly, Category="Properties", meta = (AssetBundles = "StaticMesh"))
 	TSoftObjectPtr<UStaticMesh> StaticMesh;
 	
 	// O ícone do item
-	UPROPERTY(EditAnywhere, Category="Properties", meta = (AssetBundles = "UI"))
+	UPROPERTY(EditDefaultsOnly, Category="Properties", meta = (AssetBundles = "UI"))
 	TSoftObjectPtr<UTexture2D> Icon;
 };

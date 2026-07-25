@@ -66,40 +66,38 @@ public:
 	void Initialize(USkillInstance* InInstance, AEntityClass* InEntity, FSkillContext& InSkillContext);
 	
 	// Utilizado para contar as párticulas do Niagara Processadas
+	UPROPERTY(Transient)
 	int16 ParticlesProcessed = 0;
 	
 	// Niagaras spawnados
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(Transient, VisibleAnywhere)
 	TArray<TObjectPtr<UNiagaraComponent>> SpawnedNiagaraComponents;
 
 	// A instancia da skill que deu origem a esta SkillActor
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TWeakObjectPtr<USkillInstance> Instance;
 	
 	// A entidade que lançou a habilidade
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TWeakObjectPtr<AEntityClass> OwnerEntity;
 
 	// A capsula de colisao
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	TObjectPtr<USphereComponent> CollisionComponent = nullptr;
 	
-	// Root genérico (não tem collision)
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
-	TObjectPtr<USceneComponent> SceneRoot = nullptr;
-
 	// A Mesh da habilidade
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	TObjectPtr<UStaticMeshComponent> MeshComponent = nullptr;
 
 	// 3. Declare a função obrigatória da interface. É aqui que os dados chegam!
 	UFUNCTION(BlueprintCallable)
 	virtual void ReceiveParticleData_Implementation(const TArray<FBasicParticleData>& Data, UNiagaraSystem* NiagaraSystem, const FVector& SimulationPositionOffset) override;	
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Components")
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category="Components")
 	TObjectPtr<UNiagaraComponent> NiagaraComponent = nullptr;
 	
 	// de 0 a 1, é uma medida de carregamento, 1 sendo o maximo
+	UPROPERTY(Transient)
 	float ChargeRatio = 0.0f;
 	
 	// Componente de movimento

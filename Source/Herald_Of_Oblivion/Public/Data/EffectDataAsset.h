@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Core/EffectInstance.h"
+#include "Engine/DataAsset.h"
 #include "UObject/Object.h"
 #include "EffectDataAsset.generated.h"
 

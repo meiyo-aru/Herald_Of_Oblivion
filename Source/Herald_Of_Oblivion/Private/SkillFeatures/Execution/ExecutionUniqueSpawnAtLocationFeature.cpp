@@ -32,7 +32,6 @@ void UExecutionUniqueSpawnAtLocationFeature::Execute(FSkillContext& InSkillConte
 	
 	InSkillContext.SkillStage = ESkillStage::InExecution;
 	
-	if (!InSkillContext.bActivated) return;
 	if (InSkillContext.EndLocation.IsZero()) return;
 	
 	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
@@ -57,8 +56,10 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 	}
 	
 	UNiagaraSystem* VFX;
+	TObjectPtr<UNiagaraSystem>* LoadedExecutionEffect = CachedEffects.Find(FName("ExecutionEffect"));
+
 	if (LoadedExecutionEffect) 
-		VFX = LoadedExecutionEffect;
+		VFX = *LoadedExecutionEffect;
 	else 
 		VFX = ExecutionEffect.Get();
 	

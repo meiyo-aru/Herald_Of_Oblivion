@@ -32,11 +32,11 @@ public:
 	FText Description;
 	
 	UPROPERTY(EditAnywhere, Category="Properties")
-	TSet<TObjectPtr<UEquipmentDataAsset>> InitialEquipments;
+	TArray<TSoftObjectPtr<UEquipmentDataAsset>> InitialEquipments;
 	
 	UPROPERTY(EditAnywhere, Category="Properties")
-	TSet<TObjectPtr<UItemDataAsset>> InitialItems;
+	TArray<TSoftObjectPtr<UItemDataAsset>> InitialItems;
 	
 	UPROPERTY(EditAnywhere, Category="Properties")
-	TArray<TObjectPtr<USkillDataAsset>> InitialSkills;
+	TArray<TSoftObjectPtr<USkillDataAsset>> InitialSkills;
 };

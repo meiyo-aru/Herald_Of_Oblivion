@@ -28,13 +28,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> OnHitEffect;
-	UPROPERTY()
-	TObjectPtr<UNiagaraSystem> LoadedOnHitEffect = nullptr;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<USoundCue> OnHitSound;
-	UPROPERTY()
-	TObjectPtr<USoundCue> LoadedOnHitSound = nullptr;
 	
 	UPROPERTY(EditAnywhere, Category = "Explosion")
 	float ExplosionRadius = 30.0f;

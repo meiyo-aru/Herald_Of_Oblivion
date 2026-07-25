@@ -23,13 +23,12 @@ void FSkillContext::Reset()
 	Direction = FVector::ZeroVector;
 	EntityOnStartLocation = nullptr;
 	EntityOnEndLocation = nullptr;
-	bActivated = false;
 	StartLocation = FVector::ZeroVector;
 	EndLocation = FVector::ZeroVector;
 	StartSurfaceNormal = FVector::ZeroVector;
 	EndSurfaceNormal = FVector::ZeroVector;
-	CastTime = 0.0f;
-	ReleasedTime = 0.0f;
+	InitChargeTime = 0.0f;
+	EndChargeTime = 0.0f;
 	HoldDuration = 0.0f;
 	ChargeRatio = 0.0f;
 	

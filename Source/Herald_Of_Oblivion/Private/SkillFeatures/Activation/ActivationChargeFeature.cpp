@@ -7,14 +7,18 @@
 #include "NiagaraFunctionLibrary.h"
 #include "Sound/SoundCue.h"
 #include "NiagaraSystem.h"
+#include "TimerManager.h"
+#include "Animation/AnimInstance.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Core/EntityClass.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
 #include "Core/EquipmentActor.h"
 #include "Engine/AssetManager.h"
+#include "Engine/Engine.h"
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Subsystems/PoolingManager.h"
 
 void UActivationChargeFeature::Initialize(USkillInstance* Owner)
 {
@@ -24,238 +28,275 @@ void UActivationChargeFeature::Initialize(USkillInstance* Owner)
 void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 {
 	Super::StartActivation(InSkillContext);
-	UE_LOG(LogTemp, Error, TEXT("PPPPPPPPPPPPPPPPPPPPPPssss."));
-
+	
 	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
 	if (!SkillInstance)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UActivationCastWithHoldFeature::StartActivation - SkillInstance invalido."));
 		return;
 	}
-	
-	UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
-	if (!AssetManager)
-	{
-		UE_LOG(LogTemp, Error, TEXT("USkillInstance::CastSkill - AssetManager invalido."));
-		return;
-	}
 
-	
-	USkillDataAsset* SkillDataAsset = AssetManager->Get().GetPrimaryAssetObject<USkillDataAsset>(SkillInstance->GetAssetId());
-	
-	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
-	
-	if (!SkillDataAsset || !EntityOwner) return;
-	
-
-	if (bAura && bAuraInEntityOwner)
+	if (!SkillInstance->bIsCasting)
 	{
-		UNiagaraSystem* AuraEffect;
-		if (LoadedEntityOwnerAuraEffect) 
-			AuraEffect = LoadedEntityOwnerAuraEffect;
-		else 
-			AuraEffect = EntityOwnerAuraEffect.Get();
+		SkillInstance->bIsCharging = true;
 		
-		if (AuraEffect)
+		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
+		if (!AssetManager)
 		{
-			if (UNiagaraComponent* NC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::SkeletalMesh, EntityOwner->GetMesh(), NAME_None))
-			{
-				NC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
-				NC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
-				NC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
-				NC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
-				NC->Activate(true);
-				NC->SetAbsolute(false, false, false); 
-				InSkillContext.SpawnedNiagaraComponents.Add(NC);
-			}
+			UE_LOG(LogTemp, Error, TEXT("USkillInstance::CastSkill - AssetManager invalido."));
+			return;
 		}
-	}
-	
-	if (bAura && bAuraInWeapon)
-	{
-		UNiagaraSystem* AuraEffect;
-		if (LoadedWeaponAuraEffect) 
-			AuraEffect = LoadedWeaponAuraEffect;
-		else 
-			AuraEffect = WeaponAuraEffect.Get();
 		
-		if (AuraEffect)
-		{
-			if (AEquipmentActor* RightWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-			{
-				UNiagaraComponent* RightWeaponNC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::StaticMesh, RightWeapon->GetMesh(), NAME_None);
-				RightWeaponNC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
-				RightWeaponNC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
-				RightWeaponNC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
-				RightWeaponNC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
-				RightWeaponNC->Activate(true);
-				RightWeaponNC->SetAbsolute(false, false, false); 
-				InSkillContext.SpawnedNiagaraComponents.Add(RightWeaponNC);
-			}
-			
-			if (AEquipmentActor* LeftWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-			{
-				UNiagaraComponent* LeftWeaponNC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::StaticMesh, LeftWeapon->GetMesh(), NAME_None);
-				LeftWeaponNC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
-				LeftWeaponNC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
-				LeftWeaponNC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
-				LeftWeaponNC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
-				LeftWeaponNC->Activate(true);
-				LeftWeaponNC->SetAbsolute(false, false, false); 
-				InSkillContext.SpawnedNiagaraComponents.Add(LeftWeaponNC);
-			}
-			
-		}
-	}
-	
-	FRotator SpawnRotation;
-	if (bMakeRotFromZ)
-		SpawnRotation = !InSkillContext.StartSurfaceNormal.IsZero()
-			? UKismetMathLibrary::MakeRotFromZ(InSkillContext.StartSurfaceNormal)
-			: FRotator::ZeroRotator;
-	else SpawnRotation = FRotator::ZeroRotator;
-
-
-	if (bChargeOnTarget && !InSkillContext.StartSurfaceNormal.IsZero())
-	{
-		UNiagaraSystem* ActivationFollowingAimVFX;
-		if (LoadedActivationFollowingAimEffect)
-		{
-			ActivationFollowingAimVFX = LoadedActivationFollowingAimEffect;
-		} 
-		else 
-			ActivationFollowingAimVFX = ActivationFollowingAimEffect.Get();
+		USkillDataAsset* SkillDataAsset = SkillInstance->DataAsset;
 		
-		if (ActivationFollowingAimVFX)
+		AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
+		
+		if (!SkillDataAsset || !EntityOwner) return;
+		
+
+		if (bAura && bAuraInEntityOwner)
 		{
-			UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFollowingAimVFX, SpawnRotation, InSkillContext.StartLocation, InSkillContext);
-			if (IsValid(NiagaraComp))
+			UNiagaraSystem* AuraEffect;
+			TObjectPtr<UNiagaraSystem>* CachedEntityOwnerAuraEffect = CachedEffects.Find(FName("EntityOwnerAuraEffect"));
+			
+			if (CachedEntityOwnerAuraEffect) 
+				AuraEffect = *CachedEntityOwnerAuraEffect;
+			else 
+				AuraEffect = EntityOwnerAuraEffect.Get();
+			
+			if (AuraEffect)
 			{
-				NiagaraComp->SetVectorParameter(FName("AimLocation"), InSkillContext.StartLocation);
-				if (bChargeFollowAim)
+				if (UNiagaraComponent* NC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::SkeletalMesh, EntityOwner->GetMesh(), NAME_None))
 				{
-					TWeakObjectPtr WeakThis(this);
-					TWeakObjectPtr NiagaraWeak(NiagaraComp);
-					if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+					NC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
+					NC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
+					NC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
+					NC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
+					NC->Activate(true);
+					NC->SetAbsolute(false, false, false); 
+					InSkillContext.SpawnedNiagaraComponents.Add(NC);
+				}
+			}
+		}
+		
+		if (bAura && bAuraInWeapon)
+		{
+			UNiagaraSystem* AuraEffect;
+			TObjectPtr<UNiagaraSystem>* CachedWeaponAuraEffect = CachedEffects.Find(FName("WeaponAuraEffect"));
+			
+			if (CachedWeaponAuraEffect) 
+				AuraEffect = *CachedWeaponAuraEffect;
+			else 
+				AuraEffect = WeaponAuraEffect.Get();
+			
+			if (AuraEffect)
+			{
+				if (AEquipmentActor* RightWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+				{
+					UNiagaraComponent* RightWeaponNC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::StaticMesh, RightWeapon->GetMesh(), NAME_None);
+					RightWeaponNC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
+					RightWeaponNC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
+					RightWeaponNC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
+					RightWeaponNC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
+					RightWeaponNC->Activate(true);
+					RightWeaponNC->SetAbsolute(false, false, false); 
+					InSkillContext.SpawnedNiagaraComponents.Add(RightWeaponNC);
+				}
+				
+				if (AEquipmentActor* LeftWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+				{
+					UNiagaraComponent* LeftWeaponNC = SpawnAuraVFX(AuraEffect, EntityOwner, InSkillContext, EAuraType::StaticMesh, LeftWeapon->GetMesh(), NAME_None);
+					LeftWeaponNC->SetFloatParameter(FName("NormalOffset"), this->NormalOffsetAura);
+					LeftWeaponNC->SetFloatParameter(FName("SpawnRate"), this->SpawnRateAura);
+					LeftWeaponNC->SetFloatParameter(FName("MaxLifeTime"), this->MaxLifeTimeAura);
+					LeftWeaponNC->SetFloatParameter(FName("MinLifeTime"), this->MinLifeTimeAura);
+					LeftWeaponNC->Activate(true);
+					LeftWeaponNC->SetAbsolute(false, false, false); 
+					InSkillContext.SpawnedNiagaraComponents.Add(LeftWeaponNC);
+				}
+				
+			}
+		}
+		
+		FRotator SpawnRotation;
+		if (bMakeRotFromZ)
+			SpawnRotation = !InSkillContext.StartSurfaceNormal.IsZero()
+				? UKismetMathLibrary::MakeRotFromZ(InSkillContext.StartSurfaceNormal)
+				: FRotator::ZeroRotator;
+		else SpawnRotation = FRotator::ZeroRotator;
+
+
+		if (bChargeOnTarget && !InSkillContext.StartSurfaceNormal.IsZero())
+		{
+			UNiagaraSystem* ActivationFollowingAimVFX;
+			TObjectPtr<UNiagaraSystem>* CachedActivationFollowingAimEffect = CachedEffects.Find(FName("ActivationFollowingAimEffect"));
+			if (CachedActivationFollowingAimEffect)
+			{
+				ActivationFollowingAimVFX = *CachedActivationFollowingAimEffect;
+			} 
+			else 
+				ActivationFollowingAimVFX = ActivationFollowingAimEffect.Get();
+			
+			if (ActivationFollowingAimVFX)
+			{
+				UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFollowingAimVFX, SpawnRotation, InSkillContext.StartLocation, InSkillContext);
+				if (IsValid(NiagaraComp))
+				{
+					NiagaraComp->SetVectorParameter(FName("AimLocation"), InSkillContext.StartLocation);
+					if (bChargeFollowAim)
 					{
-						
-						World->GetTimerManager().SetTimer(TimerHandleChargeFollowAim, 
-						[WeakThis, NiagaraWeak, &InSkillContext]{
-							if (UActivationChargeFeature* CastWithHoldFeature = WeakThis.Get())
-							{
-								FHitResult Hit = CastWithHoldFeature->GetAimTarget(InSkillContext, 0.05f);
-								if (Hit.bBlockingHit)
+						TWeakObjectPtr WeakThis(this);
+						TWeakObjectPtr NiagaraWeak(NiagaraComp);
+						if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+						{
+							
+							World->GetTimerManager().SetTimer(TimerHandleChargeFollowAim, 
+							[WeakThis, NiagaraWeak, &InSkillContext]{
+								if (UActivationChargeFeature* CastWithHoldFeature = WeakThis.Get())
 								{
-									if (UNiagaraComponent* Nc = NiagaraWeak.Get())
+									FHitResult Hit = CastWithHoldFeature->GetAimTarget(InSkillContext, 0.05f);
+									if (Hit.bBlockingHit)
 									{
-										Nc->SetVectorParameter(FName("AimLocation"), Hit.ImpactPoint);
-										
-										FRotator SpawnRotation;
-										if (CastWithHoldFeature->bMakeRotFromZ)
-											SpawnRotation = !Hit.ImpactNormal.IsZero()
-												? UKismetMathLibrary::MakeRotFromZ(Hit.ImpactNormal)
-												: FRotator::ZeroRotator;
-										else SpawnRotation = FRotator::ZeroRotator;
-										
-										Nc->SetWorldRotation(SpawnRotation);
+										if (UNiagaraComponent* Nc = NiagaraWeak.Get())
+										{
+											Nc->SetVectorParameter(FName("AimLocation"), Hit.ImpactPoint);
+											
+											FRotator SpawnRotation;
+											if (CastWithHoldFeature->bMakeRotFromZ)
+												SpawnRotation = !Hit.ImpactNormal.IsZero()
+													? UKismetMathLibrary::MakeRotFromZ(Hit.ImpactNormal)
+													: FRotator::ZeroRotator;
+											else SpawnRotation = FRotator::ZeroRotator;
+											
+											Nc->SetWorldRotation(SpawnRotation);
+										}
 									}
 								}
-							}
-						},
-						RateToFollow,
-						true);
+							},
+							RateToFollow,
+							true);
+						}
+
+					}
+					NiagaraComp->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
+					NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
+					NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
+					InSkillContext.SpawnedNiagaraComponents.Add(NiagaraComp);
+				}
+			}
+		}
+		if (bChargeOnRightHand || bChargeOnLeftHand || bChargeOnForward)
+		{
+			UNiagaraSystem* ActivationFX;
+			TObjectPtr<UNiagaraSystem>* CachedActivationEffect = CachedEffects.Find(FName("ActivationEffect"));
+			
+			if (CachedActivationEffect) 
+				ActivationFX = *CachedActivationEffect;
+			else 
+				ActivationFX = ActivationEffect.Get();
+
+			if (ActivationFX)
+			{
+				if (bChargeOnForward)
+				{
+					if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, EntityOwner->GetMesh()->GetSocketLocation(FName("Forward")), InSkillContext))
+					{
+						NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
+						NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
+						InSkillContext.SpawnedNiagaraComponents.Add(NiagaraComp);
+					}
+						
+				} else
+				{
+					if (bChargeOnRightHand)
+					{
+						if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
+						{
+							if (AEquipmentActor* EquippedWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+								NiagaraComp->AttachToComponent(EquippedWeapon->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Charge"));
+							else
+								NiagaraComp->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHand"));
+							
+							NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
+							NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
+							InSkillContext.SpawnedNiagaraComponents.Add(NiagaraComp);
+						}
+							
+					}
+					if (bChargeOnLeftHand)
+					{
+						if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
+						{
+							if (AEquipmentActor* EquippedWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+								NiagaraComp->AttachToComponent(EquippedWeapon->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Charge"));
+							else
+								NiagaraComp->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("LeftHand"));
+							
+							NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
+							NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
+							InSkillContext.SpawnedNiagaraComponents.Add(NiagaraComp);
+						}
+					}
+				}
+			}
+		}
+		
+		TWeakObjectPtr WeakThis(this);
+		TWeakObjectPtr<USkillInstance> WeakSkillInstance = InSkillContext.SkillInstance;
+		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+		{
+			World->GetTimerManager().SetTimer(
+				this->PrematureCompleteActivationTimerHandle, 
+				[WeakThis, WeakSkillInstance, this]() 
+				{
+					if (!WeakThis.IsValid() || !WeakSkillInstance.IsValid() || !PrematureCompleteActivationTimerHandle.IsValid())
+					{
+						return;
 					}
 
-				}
-				NiagaraComp->SetFloatParameter(FName("ChargeRatio"), InSkillContext.ChargeRatio);
-				NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
-				NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
-				InSkillContext.SpawnedNiagaraComponents.Add(NiagaraComp);
-			}
+					WeakThis->CompleteActivation(WeakSkillInstance->CurrentContext);
+				},
+		            MaxChargeTime,
+				false,
+				-1
+			);
 		}
+		
+		UE_LOG(LogTemp, Warning, TEXT("CastWithHoldActivation Start OK"));
 	}
-	if (bChargeOnRightHand || bChargeOnLeftHand)
-	{
-		UNiagaraSystem* ActivationFX;
-		if (LoadedActivationEffect) 
-			ActivationFX = LoadedActivationEffect;
-		else 
-			ActivationFX = ActivationEffect.Get();
-
-		if (ActivationFX)
-		{
-			if (bChargeOnRightHand)
-			{
-				if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
-				{
-					if (AEquipmentActor* EquippedWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-						NiagaraComp->AttachToComponent(EquippedWeapon->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Cast"));
-					else
-						NiagaraComp->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHand"));
-					
-					NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
-					NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
-					InSkillContext.SpawnedNiagaraComponents.Add(NiagaraComp);
-				}
-					
-			}
-			if (bChargeOnLeftHand)
-			{
-				if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
-				{
-					if (AEquipmentActor* EquippedWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-						NiagaraComp->AttachToComponent(EquippedWeapon->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Cast"));
-					else
-						NiagaraComp->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("LeftHand"));
-					
-					NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
-					NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
-					InSkillContext.SpawnedNiagaraComponents.Add(NiagaraComp);
-				}
-			}
-		}
-	}
-	
-	TWeakObjectPtr WeakThis(this);
-	TWeakObjectPtr<USkillInstance> WeakSkillInstance = InSkillContext.SkillInstance;
-	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
-	{
-		World->GetTimerManager().SetTimer(
-			this->TimerHandle, 
-			[WeakThis, WeakSkillInstance, this]() 
-			{
-				if (!WeakThis.IsValid() || !WeakSkillInstance.IsValid() || !TimerHandle.IsValid())
-				{
-					return;
-				}
-
-				WeakThis->CompleteActivation(WeakSkillInstance->CurrentContext);
-			},
-	            MaxChargeTime,
-			false,
-			-1
-		);
-	}
-	
-	UE_LOG(LogTemp, Warning, TEXT("CastWithHoldActivation Start OK"));
 }
 
 void UActivationChargeFeature::CompleteActivation(FSkillContext& InSkillContext)
 {
 	Super::CompleteActivation(InSkillContext);
+	
+	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
+	if (!SkillInstance)
+	{
+		UE_LOG(LogTemp, Error, TEXT("UActivationCastWithHoldFeature::CompleteActivation - SkillInstance invalido."));
+		return;
+	}
+	
+	SkillInstance->bIsCharging = false;
+	SkillInstance->bIsCasting = false;
+
 	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
 	{
-		World->GetTimerManager().ClearTimer(this->TimerHandleChargeFollowAim);
-		if (InSkillContext.bActivated) return;
-
-		USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
-		if (!SkillInstance)
+		FTimerManager& TimerManager = World->GetTimerManager();
+		TimerManager.ClearTimer(this->TimerHandleChargeFollowAim);
+		TimerManager.ClearTimer(this->PrematureCompleteActivationTimerHandle);
+		TimerManager.ClearTimer(this->CastTimerHandle);
+		
+		if (AActor* ActorOwner = InSkillContext.EntityOwner.Get())
 		{
-			UE_LOG(LogTemp, Error, TEXT("UActivationCastWithHoldFeature::CompleteActivation - SkillInstance invalido."));
-			return;
+			if (AEntityClass* EntityOwner = Cast<AEntityClass>(ActorOwner))
+			{
+				UAnimInstance* AnimInstance = EntityOwner->GetMesh()->GetAnimInstance();
+				AnimInstance->StopAllMontages(1.0f);
+			}
 		}
 		
-	   if (InSkillContext.HoldDuration < MinChargeTime)
+	   if (InSkillContext.HoldDuration <= MinChargeTime)
 		{
 			CleanNiagara(InSkillContext.SpawnedNiagaraComponents);
 			return;
@@ -263,10 +304,10 @@ void UActivationChargeFeature::CompleteActivation(FSkillContext& InSkillContext)
 
 		InSkillContext.ChargeRatio = FMath::Clamp(InSkillContext.HoldDuration / MaxChargeTime, 0.0f, 1.0f);
 		
-		InSkillContext.bActivated = true;
 		InSkillContext.SkillInstance->OnSkillActivateDelegate.Broadcast(InSkillContext);
 		this->CleanNiagara(InSkillContext.SpawnedNiagaraComponents);
 	}
+	
 }
 
 void UActivationChargeFeature::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
@@ -285,13 +326,17 @@ void UActivationChargeFeature::LoadFXSync()
 {
 	Super::LoadFXSync();
 	
-	LoadedActivationFollowingAimEffect = ActivationFollowingAimEffect.LoadSynchronous();
-	WarmupNiagara(LoadedActivationFollowingAimEffect);
-	LoadedActivationFollowingAimSound = ActivationFollowingAimSound.LoadSynchronous();
+	UNiagaraSystem* CachedEffect = ActivationFollowingAimEffect.LoadSynchronous();
+	CachedEffects.Add(FName("ActivationFollowingAimEffect"), CachedEffect);
+	WarmupNiagara(CachedEffect);
 	
-	LoadedEntityOwnerAuraEffect = EntityOwnerAuraEffect.LoadSynchronous();
-	WarmupNiagara(LoadedEntityOwnerAuraEffect);
-	LoadedWeaponAuraEffect = WeaponAuraEffect.LoadSynchronous();
-	WarmupNiagara(LoadedWeaponAuraEffect);
+	CachedSounds.Add(FName("ActivationFollowingAimSound"), ActivationFollowingAimSound.LoadSynchronous());
 	
+	CachedEffect = EntityOwnerAuraEffect.LoadSynchronous();
+	CachedEffects.Add(FName("EntityOwnerAuraEffect"), CachedEffect);
+	WarmupNiagara(CachedEffect);
+	
+	CachedEffect = WeaponAuraEffect.LoadSynchronous();
+	CachedEffects.Add(FName("WeaponAuraEffect"), CachedEffect);
+	WarmupNiagara(CachedEffect);
 }

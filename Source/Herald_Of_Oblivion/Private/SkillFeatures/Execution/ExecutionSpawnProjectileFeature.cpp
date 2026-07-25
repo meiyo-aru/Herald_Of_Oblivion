@@ -9,10 +9,13 @@
 #include "NiagaraComponent.h"
 #include "NiagaraSystem.h"
 #include "Character/PlayerClass.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Core/EquipmentActor.h"
 #include "Core/SkillInstance.h"
 #include "Engine/AssetManager.h"
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Subsystems/PoolingManager.h"
 
@@ -30,8 +33,6 @@ void UExecutionSpawnProjectileFeature::Initialize(USkillInstance* Owner)
 void UExecutionSpawnProjectileFeature::Execute(FSkillContext& InSkillContext)
 {
 	Super::Execute(InSkillContext);
-	
-	if (!InSkillContext.bActivated) return;
 	
 	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
 	if (!SkillInstance)
@@ -61,7 +62,7 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 		return;
 	}
 
-	const USkillDataAsset* SkillDataAsset = AssetManager->Get().GetPrimaryAssetObject<USkillDataAsset>(SkillInstance->GetAssetId());
+	const USkillDataAsset* SkillDataAsset = SkillInstance->DataAsset;
 		
 	if (!SkillDataAsset)
 	{
@@ -77,28 +78,25 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	}
 	
 	FVector StartLocation;
-	if (this->bThrowByTheHands)
+	if (this->bThrowByTheForward)
+	{
+		StartLocation = EntityOwner->GetMesh()->GetSocketLocation("Forward");
+	}
+	else 
 	{
 		if (bThrowByTheRightHand)
 		{
 			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Cast");
+				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Charge");
 			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("RightHand");
 			
 		} else
 		{
 			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Cast");
+				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Charge");
 			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("LeftHand");
 		}
 	}
-	else
-	{
-		StartLocation = InSkillContext.StartLocation;
-		StartLocation.Z += 5;
-	}
-	
-
 	
 	/*
 	if (bParallelToTheTerrain)
@@ -158,8 +156,10 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	}
 	
 	UNiagaraSystem* VFX;
+	TObjectPtr<UNiagaraSystem>* LoadedExecutionEffect = CachedEffects.Find(FName("ExecutionEffect"));
+
 	if (LoadedExecutionEffect) 
-		VFX = LoadedExecutionEffect;
+		VFX = *LoadedExecutionEffect;
 	else 
 		VFX = ExecutionEffect.Get();
 
@@ -193,10 +193,6 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 
 		// Define a velocidade DIRETAMENTE
 		SkillActor->ProjectileMovementComponent->Velocity = InSkillContext.Direction * this->Speed;
-		
-		if (bParallelToTheTerrain)
-			if (!((StartLocation.Z > TargetLocation.Z + 160) || (StartLocation.Z < TargetLocation.Z - 160)))
-				SkillActor->ProjectileMovementComponent->Velocity.Z = 0.0f;
 		
 		// Força o componente a entender que a velocidade mudou
 		SkillActor->ProjectileMovementComponent->UpdateComponentVelocity();

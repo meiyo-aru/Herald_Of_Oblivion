@@ -34,6 +34,11 @@ public:
 	UPROPERTY(EditAnywhere, Category="Properties")
 	bool bUseStartLocation = true;
 	
+	// Define se usará o socket Forward da entidade.
+	// É ignorado caso bUseStartLocation == true ou !bUseStartLocation && !bUseStartLocation
+	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="!bUseStartLocation || (!bUseStartLocation && !bUseEndLocation)", EditConditionHides))
+	bool bUseForward = false;
+	
 	// Define se usará a arma ou mão direita como início do efeito, caso false usará a mão esquerda. É
 	// ignorado caso bUseStartLocation == true ou !bUseStartLocation && !bUseStartLocation
 	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="!bUseStartLocation || (!bUseStartLocation && !bUseEndLocation)", EditConditionHides))

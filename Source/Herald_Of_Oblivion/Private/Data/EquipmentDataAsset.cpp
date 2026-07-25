@@ -7,8 +7,10 @@
 #include "Core/EquipmentInstance.h"
 #include "Subsystems/GameInstanceClass.h"
 #include "Engine/AssetManager.h"
+#include "Engine/World.h"
 #include "SkillFeatures/OnHit/OnHitFeature.h"
 #include "Subsystems/PoolingManager.h"
+#include "Enumerators/ItemEnums.h"
 
 UEquipmentDataAsset::UEquipmentDataAsset() 
 {

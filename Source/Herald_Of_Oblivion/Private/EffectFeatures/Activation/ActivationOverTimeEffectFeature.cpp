@@ -2,10 +2,13 @@
 
 
 #include "EffectFeatures/Activation/ActivationOverTimeEffectFeature.h"
+
+#include "TimerManager.h"
 #include "Structs/SkillStructs.h"
 #include "Core/EntityClass.h"
 #include "Data/EffectDataAsset.h"
 #include "EffectFeatures/Execution/ExecutionEffectFeature.h"
+#include "Engine/Engine.h"
 
 void UActivationOverTimeEffectFeature::Init(FHitOverlapResult& HitOverlapResult)
 {

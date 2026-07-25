@@ -42,7 +42,7 @@ public:
 	void SpawnProjectile(FSkillContext& InSkillContext, FName ShootingSocketName);
 	// Executa alguma lógica nas particulas do niagara
 	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
-	
+
 	// Define se o projétil sai pelas mãos, caso False ele sai pelo SkillContext.StartLocation
 	UPROPERTY(EditAnywhere, Category="Projectile")
 	bool bThrowByTheHands = true;
@@ -51,7 +51,7 @@ public:
 	UPROPERTY(EditAnywhere, Category="Projectile", meta=(EditCondition="bThrowByTheHands", EditConditionHides))
 	bool bThrowByTheRightHand = true;
 	
-	// Define se o lançamento do projétil será paralelo ao terreno
-	UPROPERTY(EditAnywhere, Category="Projectile")
-	bool bParallelToTheTerrain = false;
+	// Define se usará o socket Forward da entidade.
+	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="!bThrowByTheHands", EditConditionHides))
+	bool bThrowByTheForward = false;
 };

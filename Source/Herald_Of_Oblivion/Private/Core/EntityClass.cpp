@@ -9,6 +9,7 @@
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
 #include "Data/EffectDataAsset.h"
+#include "Data/EntityDataAsset.h"
 #include "Data/EquipmentDataAsset.h"
 #include "Engine/AssetManager.h"
 #include "SkillFeatures/Activation/ActivationFeature.h"
@@ -74,6 +75,7 @@ void AEntityClass::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
+/*
 // Função para que sempre que a raridade for alterada no editor o valor padrao do modificador seja alterado também
 #if WITH_EDITOR
 void AEntityClass::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
@@ -123,9 +125,10 @@ void AEntityClass::PostEditChangeChainProperty(FPropertyChangedChainEvent& e)
 			SpecializationName = NAME_None;
 		}
 	}
-*/
+#1#
 }
 #endif
+*/
 
 // Define os atributos padrão para todas as criaturas, é sobrescrito pelo método da classe filha
 void AEntityClass::DefineAttributes()
@@ -230,49 +233,13 @@ AEquipmentActor* AEntityClass::GetEquipmentActor(EEquipmentSlot Slot)
 		WeakInstance = *FoundPtr;
 		if (UEquipmentInstance* StrongInstance = WeakInstance.Get())
 		{
-			if (AEquipmentActor* EquipmentActor = StrongInstance->EquipmentActor.Get())
+			TWeakObjectPtr<AEquipmentActor> WeakEquipmentActor = StrongInstance->GetEquipmentActor();
+			if (AEquipmentActor* EquipmentActor = WeakEquipmentActor.Get())
 				return EquipmentActor;
 		}
 	}
 	return nullptr;
 }
-
-// Calcula o Retorno de XP ao abater a entidade
-float AEntityClass::CalculateXPReturn(AEntityClass* Killer)
-{
-	// Diferença de nivel entre o assassino e a entidade morta
-	float LevelDifference = this->Level  - Killer->Level;
-	
-	float LevelDifferenceModifier = 1.0f;
-	
-	if (LevelDifference > 20) LevelDifferenceModifier = 5.0f;       // Inimigo perigoso
-	else if (LevelDifference > 10) LevelDifferenceModifier = 1.5f;       // Inimigo perigoso
-	else if (LevelDifference > 5) LevelDifferenceModifier = 1.2f;  // Inimigo um pouco mais forte
-	else if (LevelDifference < -15) LevelDifferenceModifier = 0.0f; // Inimigo trivial
-	else if (LevelDifference < -10) LevelDifferenceModifier = 0.25f; // Inimigo muito fraco
-	else if (LevelDifference < -5) LevelDifferenceModifier = 0.6f;  // Inimigo um pouco mais fraco
-
-	float XPReturn = this->XP * LevelDifferenceModifier * this->Rarity.RarityModifier;
-	
-	// Verifica se a entidade possui conquistas de abate a serem reivindicadas e se o assassino alcançou alguma
-	if (this->SlaughterAchievements.Num() && this->SlaughterAchievementsReached.Num())
-	{
-		for (EEntitySlaughterAchievementsEnum AchievementReached : SlaughterAchievementsReached)
-		{
-			FEntitySlaughterAchievementsStruct* AchievementReachedStruct = SlaughterAchievements.FindByPredicate([AchievementReached](const FEntitySlaughterAchievementsStruct& Achievement)
-			{
-				return Achievement.Achievements == AchievementReached;
-			});
-			
-			if (AchievementReachedStruct)
-			{
-				XPReturn *= AchievementReachedStruct->AchievementsModifier;
-			}
-		}
-	}
-	
-	return XPReturn;
-};
 
 float AEntityClass::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
@@ -363,6 +330,30 @@ void AEntityClass::ApplyEffect(FPrimaryAssetId EffectId)
 	}
 }
 
+UAnimSequence* AEntityClass::GetRightArmAnimation(FName AnimationName)
+{
+	if (TWeakObjectPtr<UEquipmentInstance>* WeakRightWeapon = EquippedEquipments.Find(EEquipmentSlot::RightWeapon))
+	{
+		if (UEquipmentInstance* StrongRightWeapon = WeakRightWeapon->Get())
+		{
+			return StrongRightWeapon->GetAnimation(AnimationName);
+		}
+	}
+	return nullptr;
+}
+
+UAnimSequence* AEntityClass::GetLeftArmAnimation(FName AnimationName)
+{
+	if (TWeakObjectPtr<UEquipmentInstance>* WeakLeftWeapon = EquippedEquipments.Find(EEquipmentSlot::LeftWeapon))
+	{
+		if (UEquipmentInstance* StrongLeftWeapon = WeakLeftWeapon->Get())
+		{
+			return StrongLeftWeapon->GetAnimation(AnimationName);
+		}
+	}
+	return nullptr;
+}
+
 void AEntityClass::EquipEquipment(UEquipmentInstance* Equipment)
 {
 	if (!IsValid(Equipment))
@@ -374,46 +365,49 @@ void AEntityClass::EquipEquipment(UEquipmentInstance* Equipment)
 	if (Equipment->EntityOwner != this)
 		Equipment->EntityOwner = this;
 	
-	EquippedEquipments.Add(Equipment->DataAsset->EquipmentSlot, Equipment);
+	EquippedEquipments.Add(Equipment->GetEquipmentData()->EquipmentSlot, Equipment);
 }
 
 
 void AEntityClass::LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync)
 {
-	if (bAsync)
+	if (IsValid(SkillInstance))
 	{
-		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
-		if (!AssetManager)
+		if (bAsync)
 		{
-			UE_LOG(LogTemp, Error, TEXT("APlayerClass::LoadSkillAssets - AssetManager invalido."));
-			return;
-		}
-		
-		if (!SkillInstance->SkillsHandle || !SkillInstance->SkillsHandle.IsValid())
-		{
-			SkillInstance->SkillsHandle = AssetManager->LoadPrimaryAsset(
-				SkillInstance->GetAssetId(),
-				TArray<FName>({FName("FX")}),
-				FStreamableDelegate::CreateLambda([]()
-				{
-					UE_LOG(LogTemp, Log, TEXT("Skill Assets carregados"));	
-				})
-			);
-		}
-	} else
-	{
-		if (SkillInstance->ActivationFeature)
-			SkillInstance->ActivationFeature->LoadFXSync();
-		if (SkillInstance->ExecutionFeature)
-			SkillInstance->ExecutionFeature->LoadFXSync();
-		
-		if (!SkillInstance->OnHitFeature.IsEmpty())
-			for (UOnHitFeature* Feature : SkillInstance->OnHitFeature)
+			UAssetManager* AssetManager = UAssetManager::GetIfInitialized();
+			if (!AssetManager)
 			{
-				Feature->LoadFXSync();
+				UE_LOG(LogTemp, Error, TEXT("APlayerClass::LoadSkillAssets - AssetManager invalido."));
+				return;
 			}
-		UE_LOG(LogTemp, Log, TEXT("Skill Assets carregados sincronamente"));	
-		
+			
+			if (!SkillInstance->SkillsHandle || !SkillInstance->SkillsHandle.IsValid())
+			{
+				SkillInstance->SkillsHandle = AssetManager->LoadPrimaryAsset(
+					SkillInstance->DataAsset->GetPrimaryAssetId(),
+					TArray<FName>({FName("FX")}),
+					FStreamableDelegate::CreateLambda([]()
+					{
+						UE_LOG(LogTemp, Log, TEXT("Skill Assets carregados"));	
+					})
+				);
+			}
+		} else
+		{
+			if (SkillInstance->ActivationFeature)
+				SkillInstance->ActivationFeature->LoadFXSync();
+			if (SkillInstance->ExecutionFeature)
+				SkillInstance->ExecutionFeature->LoadFXSync();
+			
+			if (!SkillInstance->OnHitFeature.IsEmpty())
+				for (UOnHitFeature* Feature : SkillInstance->OnHitFeature)
+				{
+					Feature->LoadFXSync();
+				}
+			UE_LOG(LogTemp, Log, TEXT("Skill Assets carregados sincronamente"));	
+			
+		}
 	}
 }
 

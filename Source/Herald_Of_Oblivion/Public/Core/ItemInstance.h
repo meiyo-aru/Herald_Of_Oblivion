@@ -21,27 +21,28 @@ class HERALD_OF_OBLIVION_API UItemInstance : public UObject
 {
 	GENERATED_BODY()
 	
-public:
+private:
 	// Ponteiro para o USkillDataAsset do item
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Item"))
-	TObjectPtr<USkillDataAsset> DataAsset;
-
-	// A entidade dona do item atualmente
-	UPROPERTY(VisibleAnywhere, Category="Properties")
-	TWeakObjectPtr<AEntityClass> EntityOwner;
+	UPROPERTY(Transient, EditAnywhere, Category="Properties", meta=(AllowedTypes="Item"))
+	TObjectPtr<UItemDataAsset> ItemDataAsset;
 	
 	// O Actor do item, existe um actor para cada instancia
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TWeakObjectPtr<AItemActor> ItemActor;
 	
+public:
+	// A entidade dona do item atualmente
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
+	TWeakObjectPtr<AEntityClass> EntityOwner;
+	
 	// A quantidade do item
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(Transient, EditAnywhere, Category="Properties")
 	int8 Amount;
 	
 	UItemInstance();
 	
 	// Inicializa a instancia com os valores
-	void Initialize(AEntityClass* InOwner, USkillDataAsset* InDataAsset, int8 InAmount);
+	void Initialize(AEntityClass* InOwner, UItemDataAsset* InDataAsset, int8 InAmount);
 	
 	// Prepara para mandar para o Pool
 	virtual void PrepareForPooling();

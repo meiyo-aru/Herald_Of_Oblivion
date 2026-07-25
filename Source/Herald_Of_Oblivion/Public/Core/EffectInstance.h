@@ -32,28 +32,28 @@ public:
 	void SaveToPool();
 
 	// Quando um efeito é aplicado mais de uma vez ao mesmo alvo, o Stack do efeito aplicado aumenta
-	UPROPERTY(VisibleAnywhere, Category="Properties")
-	int8 Stacks = 0;
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
+	int8 Stacks;
 	
 	// Quando um efeito é aplicado em um alvo que já possui o mesmo efeito, a duração deste é resetada
-	UPROPERTY(VisibleAnywhere, Category="Properties")
-	bool Reset = false;
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
+	bool Reset;
 	
 	// O DataAsset do efeito
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(Transient, EditAnywhere, Category="Properties")
 	TObjectPtr<UEffectDataAsset> DataAsset;	
 	
 	// A entidade alvo do efeito
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TWeakObjectPtr<AEntityClass> TargetEntity;
 	
 	// A entidade que causou o efeito
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TWeakObjectPtr<AActor> OriginatingActor;
 	
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TObjectPtr<UActivationEffectFeature> ActivationFeature; 
 	
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TObjectPtr<UExecutionEffectFeature> ExecutionFeature;
 };

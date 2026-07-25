@@ -11,6 +11,8 @@
 #include "Components/SphereComponent.h"
 #include "Core/EntityClass.h"
 #include "Core/EquipmentActor.h"
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Subsystems/PoolingManager.h"

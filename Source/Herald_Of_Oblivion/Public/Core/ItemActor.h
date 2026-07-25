@@ -6,6 +6,9 @@
 #include "GameFramework/Actor.h"
 #include "ItemActor.generated.h"
 
+class UItemInstance;
+class UEquipmentInstance;
+
 UCLASS()
 class HERALD_OF_OBLIVION_API AItemActor : public AActor
 {
@@ -19,21 +22,24 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+private:
+	// A instancia dona desse actor
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UItemInstance> ItemInstanceOwner;
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-	
-	// O StaticMesh
-	UPROPERTY(VisibleAnywhere, Category="Properties")
-	TObjectPtr<UStaticMesh>	StaticMesh;
-	
-	// O componente de StaticMesh do Actor
-	UPROPERTY(VisibleAnywhere, Category="Properties")
-	TObjectPtr<UStaticMeshComponent> StaticMeshComponent;
 	
 	// Retorna o Mesh
 	TObjectPtr<UStaticMeshComponent> GetMesh() const {return StaticMeshComponent;}
 
 	// Prepara para enviar para o Pool
 	virtual void PrepareForPooling();
+	void Initialize(UItemInstance* InItemInstanceOwner);
+
+	// O componente de StaticMesh do Actor
+	UPROPERTY(VisibleAnywhere, Category="Properties")
+	TObjectPtr<UStaticMeshComponent> StaticMeshComponent;
+	
+
 };

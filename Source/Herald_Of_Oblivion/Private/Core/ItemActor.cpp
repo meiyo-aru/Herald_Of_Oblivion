@@ -3,6 +3,9 @@
 
 #include "Core/ItemActor.h"
 
+#include "Components/StaticMeshComponent.h"
+#include "Core/ItemInstance.h"
+
 
 // Sets default values
 AItemActor::AItemActor()
@@ -35,3 +38,7 @@ void AItemActor::PrepareForPooling()
 	}
 }
 
+void AItemActor::Initialize(UItemInstance* InItemInstanceOwner)
+{
+	ItemInstanceOwner = InItemInstanceOwner;
+}

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/EngineTypes.h"
 #include "UObject/Object.h"
 #include "Structs/SkillStructs.h"
 #include "SkillFeature.generated.h"
@@ -12,6 +13,8 @@
  * As features se comunicam entre si através de Delegates disparados pela instância de skill da qual pertencem.
  */
 
+class UAnimSequenceBase;
+class USoundCue;
 class UNiagaraSystem;
 // Enum para o tipo de aura
 UENUM(BlueprintType)
@@ -100,4 +103,13 @@ public:
 	TEnumAsByte<ECollisionResponse> WorldStaticCollision = ECR_Block;
 	UPROPERTY(EditAnywhere, Category="Collision Component", meta=(EditCondition="bHaveCollisionComponent", EditConditionHides))
 	TEnumAsByte<ECollisionResponse> WorldDynamicCollision = ECR_Block;
+	
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UNiagaraSystem>> CachedEffects;
+	
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<USoundCue>> CachedSounds;
+	
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UAnimSequenceBase>> CachedAnimations;
 };

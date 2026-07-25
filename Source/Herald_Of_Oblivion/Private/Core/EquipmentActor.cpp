@@ -2,7 +2,8 @@
 
 
 #include "Core/EquipmentActor.h"
-
+#include "Core/EquipmentInstance.h"
+#include "Components/StaticMeshComponent.h"
 #include "Enumerators/ItemEnums.h"
 
 // Sets default values
@@ -34,3 +35,7 @@ void AEquipmentActor::PrepareForPooling()
 	// Reseta variaveis
 }
 
+void AEquipmentActor::Initialize(UEquipmentInstance* InEquipmentInstanceOwner)
+{
+	EquipmentInstanceOwner = InEquipmentInstanceOwner;
+}

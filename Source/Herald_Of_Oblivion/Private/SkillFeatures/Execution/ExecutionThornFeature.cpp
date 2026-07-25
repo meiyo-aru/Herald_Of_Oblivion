@@ -12,6 +12,8 @@
 #include "Core/SkillActor.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
+#include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Subsystems/PoolingManager.h"
 
@@ -34,7 +36,6 @@ void UExecutionThornFeature::Execute(FSkillContext& InSkillContext)
 {
 	Super::Execute(InSkillContext);
 	
-	if (!InSkillContext.bActivated) return;
 	if (InSkillContext.StartLocation.IsZero() || InSkillContext.EndLocation.IsZero()) return;
 	
 	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
@@ -60,8 +61,10 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 	}
 	
 	UNiagaraSystem* VFX;
+	TObjectPtr<UNiagaraSystem>* LoadedExecutionEffect = CachedEffects.Find(FName("ExecutionEffect"));
+
 	if (LoadedExecutionEffect) 
-		VFX = LoadedExecutionEffect;
+		VFX = *LoadedExecutionEffect;
 	else 
 		VFX = ExecutionEffect.Get();
 

@@ -15,14 +15,16 @@
  * Classe pai de todas as entidades.
  */
 
+class UAnimationDataAsset;
 // Forward declarations para reduzir includes no header.
 class UEquipmentInstance;
 class USkillDataAsset;
 class UEquipmentDataAsset;
 class AEquipmentActor;
-class USpecializationDataAsset;
 class USkillInstance;
 class UEffectInstance;
+class UEntityDataAsset;
+class UAnimInstance;
 
 // Delegate para notificar mudanças de vida
 DECLARE_DELEGATE_OneParam(FOnHealthChangedSignature, float);
@@ -52,23 +54,32 @@ public:
 	FAttribute* GetSimbolicAttribute(EEntitySimbolicAttributeEnum SimbolicAttribute);
 	// Retorna o atributo verdadeiro.
 	FAttribute* GetTrueAttribute(EEntityTrueAttributeEnum TrueAttribute);
-
-	FPrimaryAssetId GetSpecializationId() const {return Specialization;};
-	
+	// Retorna a quantidade de certo tipo de efeitos ativos
 	int8 GetAmountActiveEffects(FPrimaryAssetId EffectId);
+	
+	// Retorna o Level
+	int8 GetLevel() const {return Level;};
+	
 	void ApplyEffect(UEffectInstance* Effect, FHitOverlapResult& HitOverlapResult);
 	void ApplyEffect(FPrimaryAssetId EffectId);
 	
+	UFUNCTION(BlueprintCallable)
+	UAnimSequence* GetRightArmAnimation(FName AnimationName);
+	UFUNCTION(BlueprintCallable)
+	UAnimSequence* GetLeftArmAnimation(FName AnimationName);
+
 	// Equipa o equipamento
 	void EquipEquipment(UEquipmentInstance* Equipment);
 
 	// Busca o actor fisico de um equipamento equipado em um slot.
 	AEquipmentActor* GetEquipmentActor(EEquipmentSlot Slot);
 
+	/*
 	#if WITH_EDITOR // Compila este código apenas no editor
 		// Chamado quando uma propriedade é alterada no editor
 		virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	#endif
+	*/
 	
 	// Carrega os Assets na memória - Apenas os assets necessários imediatamente ao Castar a skill
 	virtual void LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync);
@@ -81,36 +92,45 @@ public:
 	
 	FAttribute* GetEquivalentResistanceAttribute(ETypeDamage InTypeDamage);
 	
+	// AnimationBlueprint da entidade
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category="Animation")
+	TObjectPtr<UAnimationDataAsset> AnimationDataAsset;
+	
+	// Define se a entidade está andando
+	UPROPERTY(Transient, BlueprintReadOnly, VisibleAnywhere, Category="Movement")
+	bool bIsWalking;
+	// Define se a entidade está Correndo
+	UPROPERTY(Transient, BlueprintReadOnly, VisibleAnywhere, Category="Movement")
+	bool bIsRunning;
+	// Define se a entidade está se movendo
+	UPROPERTY(Transient, BlueprintReadOnly, VisibleAnywhere, Category="Movement")
+	bool bIsMoving; 
+	
+	// Velocidade de movimento para frente
+	UPROPERTY(Transient, BlueprintReadOnly, VisibleAnywhere, Category="Movement")
+	float ForwardMoveSpeed;
+	// Velocidade de movimento para os lados
+	UPROPERTY(Transient, BlueprintReadOnly, VisibleAnywhere, Category="Movement")
+	float RightMoveSpeed;
+	
+	// Velocidade máxima de movimento andando
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Movement")
+	float MaxWalkMoveSpeed = 200.0f;
+	// Velocidade máxima de movimento correndo
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Movement")
+	float MaxRunMoveSpeed = 500.0f;
+
 protected:
-	// Calcula o retorno de XP esperado ao abater a entidade em questão. O calculo é feito utilizando a raridade da entidade e a diferenca de nivel
-	virtual float CalculateXPReturn(AEntityClass* Killer);
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool bIsTurningInPlace;
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool bIsHardTurningInPlace;
+
+	UPROPERTY(Transient, EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	FRotator TargetRotation;
 	
 	// Define os atributos padrão para todas as criaturas, é sobrescrito pelo método da classe filha
 	virtual void DefineAttributes();
-	
-	// Nome da entidade
-	UPROPERTY(EditAnywhere, Category="Properties")
-	FText Name; // Nome da entidade
-	
-	// FName da especializacao, usado para filtrar entidades pela especializacao
-	UPROPERTY(AssetRegistrySearchable)
-	FName SpecializationName;
-	
-	// A especialização (classe) da entidade 
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Specialization"))
-	FPrimaryAssetId Specialization;
-	
-	// Conquistas de abate da entidade. Exemplo: Fast Kill é uma conquista que pode ser adquirida ao matar a entidade muito rápido
-	UPROPERTY(EditAnywhere, Category="FX")
-    TArray<FEntitySlaughterAchievementsStruct> SlaughterAchievements;
-	
-	// As Conquistas de abate alcançadas pelo jogador
-	UPROPERTY(EditAnywhere, Category="FX")
-	TArray<EEntitySlaughterAchievementsEnum> SlaughterAchievementsReached;
-	
-	// Raca da entidade, Ex: Elfo, Humano
-	UPROPERTY(EditAnywhere, Category="Properties")
-	EEntityRaceEnum Race = EEntityRaceEnum::None;
 	
 	// Nível da entidade
 	UPROPERTY(EditAnywhere, Category="Properties")
@@ -119,25 +139,17 @@ protected:
 	// Pontos de experiencia da entidade
 	UPROPERTY(EditAnywhere, Category="Properties")
 	uint32 XP = 1000;
-	
-	// Raridade da entidade
-	UPROPERTY(EditAnywhere, Category="Properties")
-	FEntityRarityStruct Rarity = FEntityRarityStruct(EEntityRarityEnum::None);
-	
-	// A divindade adorada pela entidade
-	UPROPERTY(EditAnywhere, Category="Properties")
-	EEntityDivinityEnum Divinity = EEntityDivinityEnum::None; 
-	
+
 	// As Bençãos Concedidas à entidade;
 	// UPROPERTY(EditAnywhere, Category="Properties")
 	// TArray<EBlessingEnum> Blessings;
 	
 	// Os efeitos afetando a entidade no momento.
-	UPROPERTY(EditAnywhere, Category="FX")
+	UPROPERTY(VisibleAnywhere, Category="FX")
 	TMap<FPrimaryAssetId, TWeakObjectPtr<UEffectInstance>> Effects;
 	
 	// Array para as instâncias das habilidades.
-	UPROPERTY(EditAnywhere, Category="FX")
+	UPROPERTY(VisibleAnywhere, Category="FX")
 	TArray<TObjectPtr<USkillInstance>> SkillsInstances;
 	
 	// Os atributos simbolicos da entidade
@@ -145,11 +157,11 @@ protected:
 	TMap<EEntitySimbolicAttributeEnum, FAttribute> SimbolicAttributes;
 	
 	// Os atributos verdadeiros da entidade
-	UPROPERTY(EditAnywhere, Category="FX")
+	UPROPERTY(VisibleAnywhere, Category="FX")
 	TMap<EEntityTrueAttributeEnum, FAttribute> TrueAttributes; 
 	
 	// Um tmap das instancias dos equipamentos
-	UPROPERTY(EditAnywhere, Category="Equipments")
+	UPROPERTY(VisibleAnywhere, Category="Equipments")
 	TMap<EEquipmentSlot, TWeakObjectPtr<UEquipmentInstance>> EquippedEquipments;
 	
 	// TArray<TSoftObjectPtr<UItemInstance>> Equipment;
@@ -159,10 +171,10 @@ protected:
 	// TSoftObjectPtr<UDataAsset> DialogueData;
 	
 	// O material da superficie onde a entidade esta pisando.
-	UPROPERTY(EditAnywhere, Category="Properties")
-	UPhysicalMaterial* SurfaceMaterial;
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
+	TObjectPtr<UPhysicalMaterial> SurfaceMaterial;
 	
 	// As restricoes afetando a entidade no momento
-	UPROPERTY(EditAnywhere, Category="FX")
+	UPROPERTY(Transient, VisibleAnywhere, Category="FX")
 	TArray<ERestrictionTypeEnum> Restrictions;
 };

@@ -42,8 +42,6 @@ public:
 	void CastSkill();
 	void GoOnCooldown();
 	
-	FPrimaryAssetId GetAssetId() const {return DataAsset->GetPrimaryAssetId();};
-	
 	// Reseta as propriedades para que possa ser guardada na Pool
 	void PrepareForPooling();
 
@@ -53,40 +51,33 @@ public:
 	FOnSkillActivate OnSkillActivateDelegate;
 	FOnSkillHit OnSkillHitDelegate;
 	
+	// Ponteiro para o USkillDataAsset da habilidade
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties", meta=(AllowedTypes="Skill"))
+	TObjectPtr<USkillDataAsset> DataAsset;
+	
 	// TArray<TSoftObjectPtr<UEffect>> AGetEffects() const {return Effects;};
 private:
 	// Ponteiro para o dono da instância da habilidade
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	TWeakObjectPtr<AEntityClass> Owner;
 	
+	UPROPERTY(Transient)
 	FTimerHandle TimerHandle;
 	
-	// Ponteiro para o USkillDataAsset da habilidade
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(AllowedTypes="Skill"))
-	TObjectPtr<USkillDataAsset> DataAsset;
-	
 	// Level da habilidade
-	UPROPERTY(EditAnywhere, Category="Properties")
-	uint8 Level = 1;
+	UPROPERTY(Transient, EditAnywhere, Category="Properties")
+	uint8 Level;
 	
 	// Cada unidade representa % de redução de tempo de recarga, possui um máximo de 90%
-	UPROPERTY(EditAnywhere, Category="Properties")
-	uint8 CooldownReduce = 0;
+	UPROPERTY(Transient, EditAnywhere, Category="Properties")
+	uint8 CooldownReduce;
 	
 	// Um TArray contendo os efeitos causados por essa instância da habilidade, 
 	// esses são efeitos à parte dos efeitos do DataAsset mas são aplicados da mesma forma. Deve usar Object Pooling
 	// TArray<TSoftObjectPtr<UEffect>> Effects;
-	
-	// Determina se a skill está disponível para ser lançada
-	UPROPERTY(EditAnywhere, Category="Properties")
-	bool bInCooldown = false;
-	
-	// Determina se a skill está sendo lançada
-	UPROPERTY(EditAnywhere, Category="Properties")
-	bool bIsCasting = false;
 
 	// Um multiplicador de força da habilidade, o padrão é 1.0, debuffs e buffs de habilidade podem alterar esse modificador
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(VisibleAnywhere, Category="Properties")
 	float ForceMultiplier = 1.0;
 	
 public:
@@ -94,14 +85,14 @@ public:
 	TSharedPtr<FStreamableHandle> SkillsHandle;
 	
 	// Features da skill duplicadas do DataAsset
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	UPROPERTY(Transient, EditDefaultsOnly, Instanced, Category = "Features")
 	TObjectPtr<UExecutionFeature> ExecutionFeature;
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	UPROPERTY(Transient, EditDefaultsOnly, Instanced, Category = "Features")
 	TObjectPtr<UActivationFeature> ActivationFeature;
-	UPROPERTY(EditAnywhere, Instanced, Category = "Features")
+	UPROPERTY(Transient, EditDefaultsOnly, Instanced, Category = "Features")
 	TArray<TObjectPtr<UOnHitFeature>> OnHitFeature;
 	
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	FSkillContext CurrentContext;
 
 	// Método para inicializar a instancia de skill
@@ -119,12 +110,17 @@ public:
 		else return nullptr;
 	};
 	
-	// Getters
-	const bool GetInCooldown() const {return this->bInCooldown;};
-	const bool GetIsCasting() const {return this->bIsCasting;};
+	// Determina se a skill está disponível para ser lançada
+	UPROPERTY(Transient, EditAnywhere, Category="Properties")
+	bool bInCooldown;
 	
-	// Finaliza o Cast
-	const void FinishCast() {this->bIsCasting = false;};
+	// Determina se a skill está sendo lançada
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
+	bool bIsCasting;
+
+	// Determina se a skill está sendo carregada
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
+	bool bIsCharging;
 	
 	UActivationFeature* GetActivationFeature() const {return this->ActivationFeature;};
 	UExecutionFeature* GetExecutionFeature() const {return this->ExecutionFeature;};

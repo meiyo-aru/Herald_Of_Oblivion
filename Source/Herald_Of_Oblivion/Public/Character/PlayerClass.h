@@ -20,6 +20,7 @@ class UInputAction;
 class UInputMappingContext;
 struct FSkillContext;
 class USkillDataAsset;
+class USpecializationDataAsset;
 
 UCLASS(Blueprintable, BlueprintType)
 class HERALD_OF_OBLIVION_API APlayerClass : public AEntityClass
@@ -38,7 +39,7 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	
+
 	// Carrega os Assets de ativação necessários da skill
 	virtual void LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync) override;
 
@@ -47,14 +48,20 @@ public:
 
 	USpringArmComponent* GetSpringArmComponent() const {return this->SpringArm;};
 	UCameraComponent* GetCameraComponent() const {return this->Camera;};
-	
+
 	// Define as skills iniciais da entidade
 	UFUNCTION(BlueprintCallable, Category="Functions")
 	virtual void EquipSkill(USkillInstance* SkillInstance, bool AsyncFXLoading);
 	
+	UPROPERTY(Transient, BlueprintReadOnly, VisibleAnywhere, Category="Camera")
+	float YawOffset;
+	
+	// A especialização (classe) da entidade 
+	UPROPERTY(EditDefaultsOnly, Category="Properties")
+	TObjectPtr<USpecializationDataAsset> Specialization;
+
 protected:
 	virtual void DefineAttributes() override;
-	
 	
 	// Recebe um id e cria uma instancia e o adiciona a SkillInstances
 	UFUNCTION(BlueprintCallable, Category="Functions")
@@ -89,26 +96,34 @@ protected:
 	
 	void HandleCastSkill(USkillInstance* InSkillInstance);
 	void HandleReleasedSkill(USkillInstance* InSkillInstance);
-	
-// Propriedades
+	void RunStarted(const FInputActionValue& Value);
+	void RunCompleted(const FInputActionValue& Value);
+
+	// Propriedades
 public:
 	// As skills equipadas do jogador
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Properties")
+	UPROPERTY(VisibleAnywhere, Category="Properties")
 	TArray<TObjectPtr<USkillInstance>> EquippedSkillsInstances;
 	
+	// Velocidade em que o Mesh do jogador se alinha com a direção da camêra ao se movimentar
+	UPROPERTY(EditAnywhere, Category="Camera")
+	FRotator DefaultRotationRate = FRotator(0.0f,70.0f,0.0f);
+	
 	// Zoom máximo possível na camera
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Camera")
-	float MaxZoom;
+	UPROPERTY(EditAnywhere, Category="Camera")
+	float MaxZoom = 1200.0f;
 	
 	// Zoom minimo possível na camera
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Camera")
-	float MinZoom;	
+	UPROPERTY(EditAnywhere, Category="Camera")
+	float MinZoom = 300.0f;	
 	
 	// Velocidade de interpolação do zoom, quanto menor, mais lento
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Camera")
-	float ZoomInterpSpeed;	
+	UPROPERTY(VisibleAnywhere, Category="Camera")
+	float ZoomInterpSpeed = 5.0f;	
 	
 	// Usado no processo de interpolação do zoom da camera
+	// Velocidade de interpolação do zoom, quanto menor, mais lento
+	UPROPERTY(Transient)
 	float DesiredZoom;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Camera")
@@ -118,29 +133,31 @@ public:
 	TObjectPtr<UCameraComponent> Camera;
 	
 	// Referências para o Editor
-	UPROPERTY(EditAnywhere, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TSoftObjectPtr<UInputMappingContext> DefaultMappingContext;
 
-	UPROPERTY(EditAnywhere, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TSoftObjectPtr<UInputAction> MoveAction;
-	
-	UPROPERTY(EditAnywhere, Category = "Input")
-	TSoftObjectPtr<UInputAction> CastFirstSkillAction;
-	UPROPERTY(EditAnywhere, Category = "Input")
-	TSoftObjectPtr<UInputAction> CastSecondSkillAction;
-	UPROPERTY(EditAnywhere, Category = "Input")
-	TSoftObjectPtr<UInputAction> CastThirdSkillAction;
-	UPROPERTY(EditAnywhere, Category = "Input")
-	TSoftObjectPtr<UInputAction> CastFourthSkillAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+    TSoftObjectPtr<UInputAction> RunAction;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TSoftObjectPtr<UInputAction> CastFirstSkillAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TSoftObjectPtr<UInputAction> CastSecondSkillAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TSoftObjectPtr<UInputAction> CastThirdSkillAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TSoftObjectPtr<UInputAction> CastFourthSkillAction;
 	
-	UPROPERTY(EditAnywhere, Category = "Input")
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TSoftObjectPtr<UInputAction> MouseLookAction;
 	
 	// Função que processa o Input
 	UFUNCTION(BlueprintCallable, Category="Functions")
 	void Move(const FInputActionValue& Value);
-	
+	void MoveCompleted(const FInputActionValue& Value);
+
 	// Função que processa o Input
 	UFUNCTION(BlueprintCallable, Category="Functions")
 	void MouseLook(const FInputActionValue& Value);

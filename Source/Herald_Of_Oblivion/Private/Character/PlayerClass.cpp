@@ -5,19 +5,24 @@
 #include "DrawDebugHelpers.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Animation/AnimInstance.h"
+#include "Animation/AnimNode_StateMachine.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
+#include "Data/AnimationDataAsset.h"
 #include "Data/SurfacePhysMaterialClass.h"
 #include "Engine/AssetManager.h"
+#include "Engine/LocalPlayer.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "SkillFeatures/Activation/ActivationFeature.h"
 #include "Subsystems/GameInstanceClass.h"
+#include "Engine/World.h"
+#include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
-APlayerClass::APlayerClass() : MaxZoom(1200.0f), 
-	  MinZoom(300.0f), 
-	  ZoomInterpSpeed(5.0f)
+APlayerClass::APlayerClass()
 {
 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -36,14 +41,11 @@ APlayerClass::APlayerClass() : MaxZoom(1200.0f),
 	
 	// Seta a rotação para ser compatível com o ThirdPerson view
 	this->SpringArm->bUsePawnControlRotation = true;
-	this->bUseControllerRotationYaw = true;
+	this->bUseControllerRotationYaw = false;
 	
 	// Define a camera
 	this->Camera = CreateDefaultSubobject<UCameraComponent>(FName("Camera"));
 	this->Camera->SetupAttachment(SpringArm);
-	
-	this->GetCharacterMovement()->MaxWalkSpeed = 300;
-	this->GetCharacterMovement()->MaxWalkSpeedCrouched = 150;	
 }
 
 // Called when the game starts or when spawned
@@ -88,6 +90,11 @@ void APlayerClass::BeginPlay()
 				GI->InitializeNewPlayer(*this);
 		}
 	}
+	
+		
+	this->GetCharacterMovement()->MaxWalkSpeed = MaxWalkMoveSpeed;
+	this->GetCharacterMovement()->MaxWalkSpeedCrouched = 150;	
+	this->GetCharacterMovement()->RotationRate = DefaultRotationRate;
 }
 
 void APlayerClass::LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync)
@@ -99,7 +106,39 @@ void APlayerClass::LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync)
 void APlayerClass::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	if (bIsTurningInPlace || bIsHardTurningInPlace)
+	{
+		FRotator CurrentRotation = GetActorRotation();
 
+		FRotator NewRotation = CurrentRotation;
+		NewRotation.Pitch = 0.0f;
+		NewRotation.Roll = 0.0f;
+
+		SetActorRotation(NewRotation);
+
+		// Se o personagem chegou muito perto do ângulo final, encerra o giro físico
+		if (CurrentRotation.Equals(TargetRotation, 10.0f))
+		{
+			bIsTurningInPlace = false;
+			bIsHardTurningInPlace = false;
+		}
+		if (bIsHardTurningInPlace)
+		{
+			if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+			{
+				int32 StateMachineIndex = AnimInstance->GetStateMachineIndex(FName("Default"));
+				const FAnimNode_StateMachine* StateMachine = AnimInstance->GetStateMachineInstance(StateMachineIndex);
+
+				int32 StateIndex = YawOffset < 0 ? StateMachine->GetStateIndex(FName("Hard Turn In Place Left")) : StateMachine->GetStateIndex(FName("Hard Turn In Place Right"));
+				
+				float TimeRemaining = AnimInstance->GetRelevantAnimTimeRemainingFraction(StateMachineIndex,StateIndex);
+				if (TimeRemaining <= 0.1f)		
+					bIsHardTurningInPlace = false;
+			}
+		}
+	}
+	
 	// Verifica se o Personagem está no chão e atualiza o SurfaceMaterial
 	if (this->GetCharacterMovement()->IsMovingOnGround())
 	{
@@ -154,8 +193,18 @@ void APlayerClass::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	if (!EIC) return;
     
 	if (UInputAction* IAMove = MoveAction.LoadSynchronous())
+	{
 		EIC->BindAction(IAMove, ETriggerEvent::Triggered, this, &APlayerClass::Move);
+		EIC->BindAction(IAMove, ETriggerEvent::Completed, this, &APlayerClass::MoveCompleted);
+	}
     
+	if (UInputAction* IARun = RunAction.LoadSynchronous())
+	{
+		TWeakObjectPtr WeakThis(this);
+		EIC->BindAction(IARun, ETriggerEvent::Started, this, &APlayerClass::RunStarted);
+		EIC->BindAction(IARun, ETriggerEvent::Completed, this, &APlayerClass::RunCompleted);
+	}
+	
 	if (UInputAction* IAFirstSkill = CastFirstSkillAction.LoadSynchronous())
 	{
 		EIC->BindAction(IAFirstSkill, ETriggerEvent::Started, this, &APlayerClass::CastFirstSkill);
@@ -196,7 +245,7 @@ void APlayerClass::HandleCastSkill(USkillInstance* InSkillInstance)
 		return;
 	}
 	
-	if (InSkillInstance->GetIsCasting() || InSkillInstance->GetInCooldown())
+	if (InSkillInstance->bIsCasting || InSkillInstance->bIsCharging || InSkillInstance->bInCooldown)
 		return;
 
 	InSkillInstance->CurrentContext.EntityOwnerClass = this->GetClass();
@@ -210,22 +259,37 @@ void APlayerClass::HandleReleasedSkill(USkillInstance* InSkillInstance)
 		UE_LOG(LogTemp, Error, TEXT("APlayerClass::HandleReleasedSkill - InSkillInstance invalido."));
 		return;
 	}
-
-	if (!InSkillInstance->GetIsCasting())
-		return;
-
-	InSkillInstance->FinishCast();
-	
-	if (!InSkillInstance->CurrentContext.SkillInstance.IsValid())
-		return;
 	
 	InSkillInstance->OnSkillReleasedDelegate.Broadcast(InSkillInstance->CurrentContext);
 }
 
+void APlayerClass::RunStarted(const FInputActionValue& Value)
+{
+	bIsRunning = true;
+	
+	FRotator NewRotationRate = DefaultRotationRate;
+	NewRotationRate.Yaw -= 10.0f;
+	this->GetCharacterMovement()->RotationRate = NewRotationRate;
+}
+
+void APlayerClass::RunCompleted(const FInputActionValue& Value)
+{
+	bIsRunning = false;
+	this->GetCharacterMovement()->RotationRate = DefaultRotationRate;
+}
+
 void APlayerClass::Move(const FInputActionValue& Value)
 {
+	GetCharacterMovement()->bUseControllerDesiredRotation = true;
+
 	// Valor do input (1D axis ou 2D axis)
 	const FVector2D MovementVector = Value.Get<FVector2D>();
+	
+	// 1. Atualiza a velocidade física máxima permitida no CharacterMovementComponent
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->MaxWalkSpeed = bIsRunning ? MaxRunMoveSpeed : MaxWalkMoveSpeed;
+	}	
 	
 	// Aplicar movimento baseado na câmera/controle do personagem
 	if (MovementVector.Y != 0.0f)
@@ -239,6 +303,31 @@ void APlayerClass::Move(const FInputActionValue& Value)
 		// Movimento left/right (relativo à câmera)
 		AddMovementInput(GetActorRightVector(), MovementVector.X);
 	}
+	
+	// 1. Pega a velocidade no espaço do mundo
+	FVector WorldVelocity = GetVelocity();
+
+	// 2. Pega a rotação atual da cápsula do personagem
+	FRotator ActorRotation = GetActorRotation();
+
+	// 3. Converte a velocidade do mundo para o espaço local do personagem
+	FVector LocalVelocity = ActorRotation.UnrotateVector(WorldVelocity);
+
+	// 4. Agora você extrai os eixos perfeitamente para o seu Blend Space:
+	ForwardMoveSpeed = LocalVelocity.X; // Positivo = Indo para frente | Negativo = Indo para trás
+	RightMoveSpeed = LocalVelocity.Y;  // Positivo = Indo para a direita | Negativo = Indo para a esquerda
+	
+	// Atualiza o booleano baseando-se no input real, apenas quando ele muda!
+	bIsMoving = !MovementVector.IsNearlyZero();
+	bIsWalking = bIsRunning ? false : true;
+}
+
+void APlayerClass::MoveCompleted(const FInputActionValue& Value)
+{
+	bIsMoving = false;
+	bIsWalking = false;
+	bIsRunning = false;
+	GetCharacterMovement()->bUseControllerDesiredRotation = false;
 }
 
 void APlayerClass::MouseLook(const FInputActionValue& Value)
@@ -259,7 +348,25 @@ void APlayerClass::MouseLook(const FInputActionValue& Value)
 			PC->AddPitchInput(-LookValue.Y);
 		}
 	}
+	
+	YawOffset = (UKismetMathLibrary::NormalizedDeltaRotator(GetControlRotation(),GetActorRotation())).Yaw;
+	
+	if (!bIsHardTurningInPlace)
+	{
+		bIsHardTurningInPlace = !FMath::IsNearlyEqual(YawOffset, 0.0f, 120.0f) && bIsMoving ? true : false;
+		
+		if (bIsHardTurningInPlace) bIsTurningInPlace = false;
+		else bIsTurningInPlace = !FMath::IsNearlyEqual(YawOffset, 0.0f, 45.0f) && !bIsMoving ? true : false;
+		
+		if (bIsHardTurningInPlace || bIsTurningInPlace)
+		{
+			// 1. Calcula o destino de rotação somando o ângulo desejado (ex: +90 ou -90)
+			FRotator CurrentRot = GetActorRotation();
+			TargetRotation = FRotator(0.0f, CurrentRot.Yaw + YawOffset, 0.0f);
+		}
+	}
 }
+
 
 
 void APlayerClass::DefineAttributes()
@@ -319,7 +426,7 @@ bool APlayerClass::HasSkill(FPrimaryAssetId SkillId) const
 {
 	// Procura no array de instâncias se alguma delas aponta para o DataAsset com esse ID
 	return this->SkillsInstances.ContainsByPredicate([&](const USkillInstance* Instance) {
-		return Instance && Instance->GetAssetId() == SkillId;
+		return Instance && Instance->DataAsset->GetPrimaryAssetId() == SkillId;
 	});
 }
 

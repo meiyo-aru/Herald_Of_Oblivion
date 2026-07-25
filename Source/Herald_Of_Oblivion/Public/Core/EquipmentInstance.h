@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ItemInstance.h"
 #include "Structs/ItemStructs.h"
 #include "Data/EquipmentDataAsset.h"
 #include "EquipmentInstance.generated.h"
@@ -11,6 +12,7 @@ class USkillDataAsset;
 class AEquipmentActor;
 class AEntityClass;
 class UOnHitFeature;
+class UStaticMesh;
 
 /**
  * UEquipmentInstance
@@ -19,38 +21,39 @@ class UOnHitFeature;
  * Guarda informações exclusivas para a entidade a qual pertence, como o nível.
  */
 UCLASS()
-class HERALD_OF_OBLIVION_API UEquipmentInstance : public UObject
+class HERALD_OF_OBLIVION_API UEquipmentInstance : public UItemInstance
 {
 	GENERATED_BODY()
+
+private:
+	// Ponteiro para o DataAsset do equipamento
+	UPROPERTY(Transient, EditAnywhere, Category="Properties")
+	TObjectPtr<UEquipmentDataAsset> EquipmentDataAsset;
+	
+	// O Actor do Equipamento, existe um actor para cada instancia
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
+	TWeakObjectPtr<AEquipmentActor> EquipmentActor;
 	
 public:	
-	// Ponteiro para o DataAsset do equipamento
-	UPROPERTY(EditAnywhere, Category="Properties")
-	TObjectPtr<UEquipmentDataAsset> DataAsset;
-
-	// A entidade dona do item atualmente
-	UPROPERTY(VisibleAnywhere, Category="Properties")
-	TWeakObjectPtr<AEntityClass> EntityOwner;
-
 	// Define se o equipamento está nas mão, caso true e esteja equipado ele aparece na mão, caso false e esteja equipado 
 	// ele aparece na bainha caso seja uma arma
-	UPROPERTY(VisibleAnywhere, Category="Properties", meta=(EditCondition="DataAsset->EquipmentType == EEquipmentType::Weapon"))
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties", meta=(EditCondition="EquipmentDataAsset->EquipmentType == EEquipmentType::Weapon"))
 	bool InHands = false;
 	
 	// A raridade do equipamento
-	UPROPERTY(VisibleAnywhere, Category="Properties")
+	UPROPERTY(Transient, VisibleAnywhere, Category="Properties")
 	FItemRarityStruct Rarity;
 	
 	// O nível do equipamento
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(Transient, EditAnywhere, Category="Properties")
 	int8 Level;
 	
-	// O Actor do Equipamento, existe um actor para cada instancia
-	UPROPERTY(VisibleAnywhere, Category="Properties")
-	TWeakObjectPtr<AEquipmentActor> EquipmentActor;
+	// Mapa das animações carregadas da arma
+	UPROPERTY(Transient, VisibleAnywhere, Category="Animation")
+	TMap<FName, TObjectPtr<UAnimSequence>> CachedAnimations;
 
 	// Feature de OnHit
-	UPROPERTY(EditAnywhere, Category = "Features")
+	UPROPERTY(Transient, EditAnywhere, Category = "Features")
 	TArray<TObjectPtr<UOnHitFeature>> OnHitFeature;
 	
 	UEquipmentInstance();
@@ -59,7 +62,13 @@ public:
 	                UOnHitFeature*>& InOnHitFeatures, AEntityClass* InOwner = nullptr);
 	
 	// Procura um Actor no Pool e o Retorna
-	AEquipmentActor* GetEquipmentActor(FVector Location = FVector::ZeroVector, FRotator Rotation = FRotator::ZeroRotator);
+	AEquipmentActor* GetEquipmentActorFromPool(UStaticMesh* InStaticMesh, FVector Location = FVector::ZeroVector, FRotator Rotation = FRotator::ZeroRotator);
 	// Procura um Actor no Pool, o anexa ao EntityOwner e o retorna
-	AEquipmentActor* GetEquipmentActorAndAttach();
+	AEquipmentActor* GetEquipmentActorFromPoolAndAttach(UStaticMesh* InStaticMesh);
+	
+	UAnimSequence* GetAnimation(FName AnimationName);
+	
+	UEquipmentDataAsset* GetEquipmentDataAsset() const { return EquipmentDataAsset; };
+	TWeakObjectPtr<AEquipmentActor> GetEquipmentActor() const { return EquipmentActor; };
+	UEquipmentDataAsset* GetEquipmentData() const { return EquipmentDataAsset; };
 };

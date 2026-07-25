@@ -4,9 +4,11 @@
 #include "Core/SkillInstance.h"
 
 #include "NiagaraDataInterfaceExport.h"
+#include "TimerManager.h"
 #include "Core/EntityClass.h"
 #include "Data/SkillDataAsset.h"
 #include "Engine/AssetManager.h"
+#include "Engine/Engine.h"
 #include "Engine/StreamableManager.h"
 #include "SkillFeatures/Activation/ActivationFeature.h"
 #include "SkillFeatures/Execution/ExecutionFeature.h"
@@ -37,6 +39,7 @@ void USkillInstance::GoOnCooldown()
 		World->GetTimerManager().ClearTimer(this->TimerHandle);
 		
 		this->bInCooldown = true;
+		this->bIsCharging = false;
 		this->bIsCasting = false;
 		
 		UAssetManager* AssetManager = UAssetManager::GetIfInitialized();

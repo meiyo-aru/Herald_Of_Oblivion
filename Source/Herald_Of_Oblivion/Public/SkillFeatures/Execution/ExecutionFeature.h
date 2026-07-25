@@ -23,13 +23,9 @@ public:
 	// Efeito de execução da skill, deve ser compatível com a ExecutionFeature
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> ExecutionEffect;
-	UPROPERTY()
-	TObjectPtr<UNiagaraSystem> LoadedExecutionEffect = nullptr;
 	// Efeito de som
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<USoundCue> ExecutionSound;
-	UPROPERTY()
-	TObjectPtr<USoundCue> LoadedExecutionSound = nullptr;
 	
 	// Carrega os FX de forma síncrona
 	virtual void LoadFXSync();

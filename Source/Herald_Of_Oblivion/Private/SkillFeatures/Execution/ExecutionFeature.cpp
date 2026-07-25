@@ -9,9 +9,11 @@
 
 void UExecutionFeature::LoadFXSync()
 {
-	LoadedExecutionEffect = ExecutionEffect.LoadSynchronous();
-	WarmupNiagara(LoadedExecutionEffect);
-	LoadedExecutionSound = ExecutionSound.LoadSynchronous();
+	UNiagaraSystem* CachedEffect = ExecutionEffect.LoadSynchronous();
+	CachedEffects.Add(FName("ExecutionEffect"), CachedEffect);
+	WarmupNiagara(CachedEffect);
+	
+	CachedSounds.Add(FName("ExecutionSound"), ExecutionSound.LoadSynchronous());
 }
 
 void UExecutionFeature::Initialize(USkillInstance* Owner)

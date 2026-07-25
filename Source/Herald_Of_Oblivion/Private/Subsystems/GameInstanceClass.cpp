@@ -5,6 +5,7 @@
 
 #include "Character/PlayerClass.h"
 #include "Core/EquipmentInstance.h"
+#include "Core/SkillInstance.h"
 #include "Data/EquipmentDataAsset.h"
 #include "Data/SkillDataAsset.h"
 #include "Data/SpecializationDataAsset.h"
@@ -16,31 +17,31 @@ void UGameInstanceClass::Init()
 
 void UGameInstanceClass::InitializeNewPlayer(APlayerClass& Player)
 {
-	if (const TSoftObjectPtr<USpecializationDataAsset>* DataAssetPtr = InitialEquipmentsAndSkillsBySpecialization.Find(Player.GetSpecializationId()))
+	if (Player.Specialization)
 	{
-		const TSoftObjectPtr<USpecializationDataAsset> DataAsset = *DataAssetPtr;
-		
-		if (USpecializationDataAsset* Specialization = DataAsset.LoadSynchronous())
-		{
-			if (!Specialization->InitialSkills.IsEmpty())
-				for (USkillDataAsset* SkillDataAsset : Specialization->InitialSkills)
+		if (!Player.Specialization->InitialSkills.IsEmpty())
+			for (TSoftObjectPtr<USkillDataAsset> SoftSkillDataAsset : Player.Specialization->InitialSkills)
+			{
+				if (USkillDataAsset* StrongSkillDataAsset = SoftSkillDataAsset.LoadSynchronous())
 				{
-					USkillInstance* SkillInstance = SkillDataAsset->CreateInstance(&Player);
+					USkillInstance* SkillInstance = StrongSkillDataAsset->CreateInstance(&Player);
 					Player.EquipSkill(SkillInstance, false);
 				}
-			if (!Specialization->InitialEquipments.IsEmpty())
-				for (UEquipmentDataAsset* EquipmentDataAsset : Specialization->InitialEquipments)
-				{
-					UEquipmentInstance* EquipmentInstance = EquipmentDataAsset->GetInstance(FItemRarityStruct(EItemRarityEnum::Normal), 1, 1, &Player);
-					EquipmentInstance->EquipmentActor = EquipmentInstance->GetEquipmentActorAndAttach();
-					EquipmentInstance->EquipmentActor->StaticMesh = EquipmentDataAsset->StaticMesh.LoadSynchronous();
-					EquipmentInstance->EquipmentActor->StaticMeshComponent->SetStaticMesh(EquipmentInstance->EquipmentActor->StaticMesh);
-					Player.EquipEquipment(EquipmentInstance);
-				}		
-			/*for (UItemDataAsset* ItemDataAsset : Specialization->InitialItems)
+			}
+		if (!Player.Specialization->InitialEquipments.IsEmpty())
+			for (TSoftObjectPtr<UEquipmentDataAsset> SoftEquipmentDataAsset : Player.Specialization->InitialEquipments)
 			{
-				
-			}*/
-		}
+				if (UEquipmentDataAsset* StrongEquipmentDataAsset = SoftEquipmentDataAsset.LoadSynchronous())
+				{
+					UEquipmentInstance* EquipmentInstance = StrongEquipmentDataAsset->GetInstance(FItemRarityStruct(EItemRarityEnum::Normal), 1, 1, &Player);
+					EquipmentInstance->GetEquipmentActorFromPoolAndAttach(StrongEquipmentDataAsset->StaticMesh.LoadSynchronous());
+					Player.EquipEquipment(EquipmentInstance);
+				}
+			}		
+		/*for (UItemDataAsset* ItemDataAsset : Specialization->InitialItems)
+		{
+			
+		}*/
+		
 	}
 }
