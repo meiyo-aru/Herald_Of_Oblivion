@@ -55,6 +55,14 @@ public:
 	// O Animation Montage de Cast da habilidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UAnimSequenceBase> CastAnimation;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	float CastAnimBlendInTime = 0.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	float CastAnimBlendOutTime = 0.0f;
+	// O Slot usado pela animação no AnimGraph
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
+	FName CastAnimSlotName = FName("FullBodySlot");
+
 	// O Niagara de Cast da habilidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> CastEffect;
@@ -79,13 +87,5 @@ public:
 	// Define que o cast vai ser feito na mao esquerda
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
 	bool bCastOnLeftHand = false;
-	
-	// Efeito de Ativação
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation", meta = (AssetBundles = "FX"))
-	TSoftObjectPtr<UNiagaraSystem> ActivationEffect;
-	// Som de Ativação
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Activation", meta = (AssetBundles = "FX"))
-	TSoftObjectPtr<USoundCue> ActivationSound;
-
 };
 

@@ -11,6 +11,7 @@
 #include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Core/EntityAnimInstance.h"
 #include "Core/EntityClass.h"
 #include "Data/SkillDataAsset.h"
 #include "Core/SkillInstance.h"
@@ -53,7 +54,21 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 		
 		if (!SkillDataAsset || !EntityOwner) return;
 		
-
+	
+		if (UEntityAnimInstance* AnimInstance = Cast<UEntityAnimInstance>(EntityOwner->GetMesh()->GetAnimInstance()))
+		{
+			if (TObjectPtr<UAnimSequenceBase>* Anim = CachedAnimations.Find(FName("ChargeAnimation")))
+			{
+				if (ChargeAnimSlotName == FName("FullBodySlot"))
+					AnimInstance->AnimationMontageBlendWeight = 0.0f;	
+				else if (ChargeAnimSlotName == FName("UpperBodySlot"))
+					AnimInstance->AnimationMontageBlendWeight = 1.0f;	
+				
+				AnimInstance->PlaySlotAnimationAsDynamicMontage(*Anim, ChargeAnimSlotName, ChargeAnimBlendInTime, ChargeAnimBlendOutTime, 1, 100);
+			}
+		}
+		
+		
 		if (bAura && bAuraInEntityOwner)
 		{
 			UNiagaraSystem* AuraEffect;
@@ -62,7 +77,7 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 			if (CachedEntityOwnerAuraEffect) 
 				AuraEffect = *CachedEntityOwnerAuraEffect;
 			else 
-				AuraEffect = EntityOwnerAuraEffect.Get();
+				AuraEffect = ChargeEntityOwnerAuraEffect.Get();
 			
 			if (AuraEffect)
 			{
@@ -87,7 +102,7 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 			if (CachedWeaponAuraEffect) 
 				AuraEffect = *CachedWeaponAuraEffect;
 			else 
-				AuraEffect = WeaponAuraEffect.Get();
+				AuraEffect = ChargeWeaponAuraEffect.Get();
 			
 			if (AuraEffect)
 			{
@@ -129,13 +144,13 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 		if (bChargeOnTarget && !InSkillContext.StartSurfaceNormal.IsZero())
 		{
 			UNiagaraSystem* ActivationFollowingAimVFX;
-			TObjectPtr<UNiagaraSystem>* CachedActivationFollowingAimEffect = CachedEffects.Find(FName("ActivationFollowingAimEffect"));
-			if (CachedActivationFollowingAimEffect)
+			TObjectPtr<UNiagaraSystem>* CachedChargeFollowingAimEffect = CachedEffects.Find(FName("ChargeFollowingAimEffect"));
+			if (CachedChargeFollowingAimEffect)
 			{
-				ActivationFollowingAimVFX = *CachedActivationFollowingAimEffect;
+				ActivationFollowingAimVFX = *CachedChargeFollowingAimEffect;
 			} 
 			else 
-				ActivationFollowingAimVFX = ActivationFollowingAimEffect.Get();
+				ActivationFollowingAimVFX = ChargeFollowingAimEffect.Get();
 			
 			if (ActivationFollowingAimVFX)
 			{
@@ -187,19 +202,19 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 		}
 		if (bChargeOnRightHand || bChargeOnLeftHand || bChargeOnForward)
 		{
-			UNiagaraSystem* ActivationFX;
-			TObjectPtr<UNiagaraSystem>* CachedActivationEffect = CachedEffects.Find(FName("ActivationEffect"));
+			UNiagaraSystem* ChargeFX;
+			TObjectPtr<UNiagaraSystem>* CachedChargeEffect = CachedEffects.Find(FName("ChargeEffect"));
 			
-			if (CachedActivationEffect) 
-				ActivationFX = *CachedActivationEffect;
+			if (CachedChargeEffect) 
+				ChargeFX = *CachedChargeEffect;
 			else 
-				ActivationFX = ActivationEffect.Get();
+				ChargeFX = ChargeEffect.Get();
 
-			if (ActivationFX)
+			if (ChargeFX)
 			{
 				if (bChargeOnForward)
 				{
-					if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, EntityOwner->GetMesh()->GetSocketLocation(FName("Forward")), InSkillContext))
+					if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ChargeFX, FRotator::ZeroRotator, EntityOwner->GetMesh()->GetSocketLocation(FName("Forward")), InSkillContext))
 					{
 						NiagaraComp->SetFloatParameter(FName("MinChargeTime"), MinChargeTime);
 						NiagaraComp->SetFloatParameter(FName("MaxChargeTime"), MaxChargeTime);
@@ -210,7 +225,7 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 				{
 					if (bChargeOnRightHand)
 					{
-						if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
+						if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ChargeFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
 						{
 							if (AEquipmentActor* EquippedWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
 								NiagaraComp->AttachToComponent(EquippedWeapon->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Charge"));
@@ -225,7 +240,7 @@ void UActivationChargeFeature::StartActivation(FSkillContext& InSkillContext)
 					}
 					if (bChargeOnLeftHand)
 					{
-						if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ActivationFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
+						if (UNiagaraComponent* NiagaraComp = SpawnVFXAtLocation(ChargeFX, FRotator::ZeroRotator, FVector::ZeroVector, InSkillContext))
 						{
 							if (AEquipmentActor* EquippedWeapon = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
 								NiagaraComp->AttachToComponent(EquippedWeapon->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Charge"));
@@ -277,6 +292,8 @@ void UActivationChargeFeature::CompleteActivation(FSkillContext& InSkillContext)
 		return;
 	}
 	
+
+		
 	SkillInstance->bIsCharging = false;
 	SkillInstance->bIsCasting = false;
 
@@ -326,17 +343,25 @@ void UActivationChargeFeature::LoadFXSync()
 {
 	Super::LoadFXSync();
 	
-	UNiagaraSystem* CachedEffect = ActivationFollowingAimEffect.LoadSynchronous();
-	CachedEffects.Add(FName("ActivationFollowingAimEffect"), CachedEffect);
+	UNiagaraSystem* CachedEffect = ChargeFollowingAimEffect.LoadSynchronous();
+	CachedEffects.Add(FName("ChargeFollowingAimEffect"), CachedEffect);
 	WarmupNiagara(CachedEffect);
 	
-	CachedSounds.Add(FName("ActivationFollowingAimSound"), ActivationFollowingAimSound.LoadSynchronous());
+	CachedSounds.Add(FName("ChargeFollowingAimSound"), ChargeFollowingAimSound.LoadSynchronous());
 	
-	CachedEffect = EntityOwnerAuraEffect.LoadSynchronous();
+	CachedEffect = ChargeEntityOwnerAuraEffect.LoadSynchronous();
 	CachedEffects.Add(FName("EntityOwnerAuraEffect"), CachedEffect);
 	WarmupNiagara(CachedEffect);
 	
-	CachedEffect = WeaponAuraEffect.LoadSynchronous();
+	CachedEffect = ChargeWeaponAuraEffect.LoadSynchronous();
 	CachedEffects.Add(FName("WeaponAuraEffect"), CachedEffect);
 	WarmupNiagara(CachedEffect);
+	
+	CachedEffect = ChargeEffect.LoadSynchronous();
+	CachedEffects.Add(FName("ChargeEffect"), CachedEffect);
+	WarmupNiagara(CachedEffect);
+	
+	CachedAnimations.Add(FName("ChargeAnimation"), ChargeAnimation.LoadSynchronous());
+	
+	CachedSounds.Add(FName("ChargeSound"), ChargeSound.LoadSynchronous());
 }

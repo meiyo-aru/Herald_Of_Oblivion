@@ -23,12 +23,16 @@ public:
 	virtual void Initialize(USkillInstance* Owner) override;
 	
 	// Realiza operações essenciais e comuns às classes filhas
-	virtual void Execute(FSkillContext& InSkillContext) override;
+	virtual void PrimaryExecute(FSkillContext& InSkillContext) override;
+	// Execução final, geralmente ouve uma notificacao da animação
+	virtual void FinallyExecute(FSkillContext& InSkillContext) override;
+
+	virtual void OnPlayMontageNotifyBegin(FName NotifyName) override;
 	
 	virtual void CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents) override;
 
 	// Executa alguma lógica nas particulas do niagara
-	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
+	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& InSkillContext) override;
 	
 	// Caso True, o efeito usara o StartLocation do contexto da skill como início do efeito
 	UPROPERTY(EditAnywhere, Category="Properties")

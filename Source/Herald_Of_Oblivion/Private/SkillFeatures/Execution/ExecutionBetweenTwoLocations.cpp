@@ -26,9 +26,14 @@ void UExecutionBetweenTwoLocations::Initialize(USkillInstance* Owner)
 	Super::Initialize(Owner);
 }
 
-void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
+void UExecutionBetweenTwoLocations::PrimaryExecute(FSkillContext& InSkillContext)
 {
-	Super::Execute(InSkillContext);
+	Super::PrimaryExecute(InSkillContext);
+}
+
+void UExecutionBetweenTwoLocations::FinallyExecute(FSkillContext& InSkillContext)
+{
+	Super::FinallyExecute(InSkillContext);
 	
 	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 	if (!IsValid(EntityOwner))
@@ -191,13 +196,18 @@ void UExecutionBetweenTwoLocations::Execute(FSkillContext& InSkillContext)
 	}
 }
 
+void UExecutionBetweenTwoLocations::OnPlayMontageNotifyBegin(FName NotifyName)
+{
+	Super::OnPlayMontageNotifyBegin(NotifyName);
+}
+
 void UExecutionBetweenTwoLocations::CleanNiagara(TArray<TWeakObjectPtr<UNiagaraComponent>>& SpawnedNiagaraComponents)
 {
 	Super::CleanNiagara(SpawnedNiagaraComponents);
 }
 
 void UExecutionBetweenTwoLocations::ProccessParticles(const TArray<struct FBasicParticleData>& Data,
-	FSkillContext& SkillContext)
+	FSkillContext& InSkillContext)
 {
-	Super::ProccessParticles(Data, SkillContext);
+	Super::ProccessParticles(Data, InSkillContext);
 }

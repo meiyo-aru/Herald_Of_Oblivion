@@ -42,9 +42,14 @@ public:
 	// Inicializa com os valores
 	virtual void Initialize(USkillInstance* Owner) override;
 	// Executa a lógica principal
-	virtual void Execute(FSkillContext& InSkillContext) override;
+	virtual void PrimaryExecute(FSkillContext& InSkillContext) override;
+	// Execução final, geralmente ouve uma notificacao da animação
+	virtual void FinallyExecute(FSkillContext& InSkillContext) override;
+
+	virtual void OnPlayMontageNotifyBegin(FName NotifyName) override;
+
 	// Spawna o efeito em um local
 	void SpawnAtLocation(FSkillContext& InSkillContext);
 	// Executa alguma lógica nas particulas do niagara
-	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
+	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& InSkillContext) override;
 };

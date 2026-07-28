@@ -52,14 +52,38 @@ public:
 	// Se o efeito de Charge deve estar orientado para o alvo
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge")
 	bool bChargeOnTarget = false;
+	
+	// Animação de carga
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX"))
+	TSoftObjectPtr<UAnimSequenceBase> ChargeAnimation;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge")
+	float ChargeAnimBlendInTime = 0.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge")
+	float ChargeAnimBlendOutTime = 0.0f;
+	// O Slot usado pela animação no AnimGraph
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge")
+	FName ChargeAnimSlotName = FName("FullBodySlot");
+	
+	// Efeito de carga estático, esse Niagara precisa usar Local Space
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX"))
+	TSoftObjectPtr<UNiagaraSystem> ChargeEffect;
+	// Som de carga estático
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX"))
+	TSoftObjectPtr<USoundCue> ChargeSound;
 
+	// Efeito de Ativação que segue a mira
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
+	TSoftObjectPtr<UNiagaraSystem> ChargeFollowingAimEffect;
+	// Som de Ativação que segue a mira
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
+	TSoftObjectPtr<USoundCue> ChargeFollowingAimSound;
+	
 	// Se o efeito de carga deve seguir a mira
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta=(EditCondition="bChargeOnTarget", EditConditionHides))
 	bool bChargeFollowAim = false;
 	// Frequencia de atualizacao do efeito seguindo a mira
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta=(EditCondition="bChargeFollowAim && bChargeOnTarget", EditConditionHides))
 	float RateToFollow = 0.5f;
-	
 	UPROPERTY(Transient)
 	FTimerHandle TimerHandleChargeFollowAim;
 	
@@ -75,19 +99,11 @@ public:
 	
 	// O VFX da aura da entidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta = (AssetBundles = "FX", EditCondition="bAura", EditConditionHides))
-	TSoftObjectPtr<UNiagaraSystem> EntityOwnerAuraEffect;
+	TSoftObjectPtr<UNiagaraSystem> ChargeEntityOwnerAuraEffect;
 	
 	// O VFX da aura da arma
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta = (AssetBundles = "FX", EditCondition="bAura", EditConditionHides))
-	TSoftObjectPtr<UNiagaraSystem> WeaponAuraEffect;
-	
-	// Efeito de Ativação que segue a mira
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
-	TSoftObjectPtr<UNiagaraSystem> ActivationFollowingAimEffect;
-
-	// Som de Ativação que segue a mira
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta = (AssetBundles = "FX", EditCondition="bChargeOnTarget", EditConditionHides))
-	TSoftObjectPtr<USoundCue> ActivationFollowingAimSound;
+	TSoftObjectPtr<UNiagaraSystem> ChargeWeaponAuraEffect;
 	
 	// Quantidade de párticulas
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aura", meta=(EditCondition="bAura", EditConditionHides))

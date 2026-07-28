@@ -32,9 +32,14 @@ void UExecutionThornFeature::Initialize(USkillInstance* Owner)
 	Super::Initialize(Owner);
 }
 
-void UExecutionThornFeature::Execute(FSkillContext& InSkillContext)
+void UExecutionThornFeature::PrimaryExecute(FSkillContext& InSkillContext)
 {
-	Super::Execute(InSkillContext);
+	Super::PrimaryExecute(InSkillContext);
+}
+
+void UExecutionThornFeature::FinallyExecute(FSkillContext& InSkillContext)
+{
+	Super::FinallyExecute(InSkillContext);
 	
 	if (InSkillContext.StartLocation.IsZero() || InSkillContext.EndLocation.IsZero()) return;
 	
@@ -49,6 +54,11 @@ void UExecutionThornFeature::Execute(FSkillContext& InSkillContext)
 	this->SpawnThorn(InSkillContext);
 	
 	SkillInstance->GoOnCooldown();
+}
+
+void UExecutionThornFeature::OnPlayMontageNotifyBegin(FName NotifyName)
+{
+	Super::OnPlayMontageNotifyBegin(NotifyName);
 }
 
 void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
@@ -173,12 +183,12 @@ void UExecutionThornFeature::SpawnThorn(FSkillContext& InSkillContext)
 	}
 }
 
-void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext)
+void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& InSkillContext)
 {
 	 UE_LOG(LogTemp, Warning, TEXT("UExecutionThornFeature::ProccessParticles"));
 	// if (this->ParticlesProcessed >= Data.Num()) return;
-	FVector StartLocation = SkillContext.StartLocation; // ou seu Start Location real
-	FVector TargetLocation = SkillContext.EndLocation;    // ou seu Target real
+	FVector StartLocation = InSkillContext.StartLocation; // ou seu Start Location real
+	FVector TargetLocation = InSkillContext.EndLocation;    // ou seu Target real
     TargetLocation.Z += 0.0f;
 	
 	// O vetor que aponta do Start para o Target
@@ -201,8 +211,8 @@ void UExecutionThornFeature::ProccessParticles(const TArray<struct FBasicParticl
 		TArray<FOverlapResult> OutOverlaps;
 		FCollisionQueryParams QueryParams;
 		
-		ASkillActor* SkillActor = SkillContext.SkillActor.Get();
-		AEntityClass* EntityOwner = Cast<AEntityClass>(SkillContext.EntityOwner.Get());
+		ASkillActor* SkillActor = InSkillContext.SkillActor.Get();
+		AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 		
 		if (!IsValid(EntityOwner) || !IsValid(SkillActor)) return;
 		

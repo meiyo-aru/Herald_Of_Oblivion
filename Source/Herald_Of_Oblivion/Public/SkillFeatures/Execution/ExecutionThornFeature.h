@@ -56,11 +56,16 @@ public:
 	// Inicializa com os valores
 	virtual void Initialize(USkillInstance* Owner) override;
 	// Executa a lógica principal
-	virtual void Execute(FSkillContext& InSkillContext) override;
+	virtual void PrimaryExecute(FSkillContext& InSkillContext) override;
+	// Execução final, geralmente ouve uma notificacao da animação
+	virtual void FinallyExecute(FSkillContext& InSkillContext) override;
+	
+	virtual void OnPlayMontageNotifyBegin(FName NotifyName) override;
+
 	// Spawna os espinhos
 	void SpawnThorn(FSkillContext& InSkillContext);
 	// Executa lógica para cada espinho gerado
-	void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext);
+	void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& InSkillContext);
 	
 	// Checa a superfície na mira do jogador
 	TArray<FHitResult> CheckSurfaceInAim(FSkillContext& InSkillContext, TArray<ESurfaceType>& InValidSurfaces);

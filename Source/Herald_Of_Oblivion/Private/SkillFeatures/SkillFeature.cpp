@@ -112,25 +112,30 @@ ASkillActor* USkillFeature::SpawnSkillActor(AEntityClass* InEntityOwner, FTransf
 
 UNiagaraComponent* USkillFeature::SpawnVFXAtLocation(UNiagaraSystem* NiagaraSystem, FRotator Rotation, FVector Location, FSkillContext& InSkillContext)
 {
-	if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+	if (IsValid(NiagaraSystem))
 	{
-		if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
-			if (UNiagaraComponent* Niagara = PoolingManager->GetNiagaraComponentFromPool(NiagaraSystem))
+		if (UWorld* World = GEngine->GetWorldFromContextObject(this, EGetWorldErrorMode::LogAndReturnNull))
+		{
+			if (UPoolingManager* PoolingManager = World->GetGameInstance()->GetSubsystem<UPoolingManager>())
 			{
-				Niagara->SetAbsolute(false, false, false); 
+				if (UNiagaraComponent* Niagara = PoolingManager->GetNiagaraComponentFromPool(NiagaraSystem))
+				{
+					Niagara->SetAbsolute(false, false, false); 
 
-				Niagara->SetWorldLocation(Location);
-				Niagara->SetWorldRotation(Rotation);
-				Niagara->Activate(true);
-				Niagara->SetVisibility(true);
+					Niagara->SetWorldLocation(Location);
+					Niagara->SetWorldRotation(Rotation);
+					Niagara->Activate(true);
+					Niagara->SetVisibility(true);
+					
+					if (!InSkillContext.Direction.IsZero())
+						Niagara->SetVectorParameter(FName("Direction"), InSkillContext.Direction);
 				
-				if (!InSkillContext.Direction.IsZero())
-					Niagara->SetVectorParameter(FName("Direction"), InSkillContext.Direction);
-			
-				Niagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnNiagaraSystemFinished);
-				
-				return Niagara;
+					Niagara->OnSystemFinished.AddDynamic(this, &USkillFeature::OnNiagaraSystemFinished);
+					
+					return Niagara;
+				}
 			}
+		}
 	}
 	return nullptr;
 }

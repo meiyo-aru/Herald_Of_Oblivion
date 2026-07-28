@@ -128,13 +128,13 @@ void APlayerClass::Tick(float DeltaTime)
 			if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
 			{
 				int32 StateMachineIndex = AnimInstance->GetStateMachineIndex(FName("Default"));
-				const FAnimNode_StateMachine* StateMachine = AnimInstance->GetStateMachineInstance(StateMachineIndex);
-
-				int32 StateIndex = YawOffset < 0 ? StateMachine->GetStateIndex(FName("Hard Turn In Place Left")) : StateMachine->GetStateIndex(FName("Hard Turn In Place Right"));
-				
-				float TimeRemaining = AnimInstance->GetRelevantAnimTimeRemainingFraction(StateMachineIndex,StateIndex);
-				if (TimeRemaining <= 0.1f)		
-					bIsHardTurningInPlace = false;
+				if (const FAnimNode_StateMachine* StateMachine = AnimInstance->GetStateMachineInstance(StateMachineIndex))
+				{
+					int32 StateIndex = YawOffset < 0 ? StateMachine->GetStateIndex(FName("Hard Turn In Place Left")) : StateMachine->GetStateIndex(FName("Hard Turn In Place Right"));
+					float TimeRemaining = AnimInstance->GetRelevantAnimTimeRemainingFraction(StateMachineIndex,StateIndex);
+					if (TimeRemaining <= 0.1f)		
+						bIsHardTurningInPlace = false;
+				}
 			}
 		}
 	}

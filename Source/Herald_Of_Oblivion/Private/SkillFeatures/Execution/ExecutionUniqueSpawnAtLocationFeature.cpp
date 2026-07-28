@@ -26,9 +26,14 @@ void UExecutionUniqueSpawnAtLocationFeature::Initialize(USkillInstance* Owner)
 	Super::Initialize(Owner);
 }
 
-void UExecutionUniqueSpawnAtLocationFeature::Execute(FSkillContext& InSkillContext)
+void UExecutionUniqueSpawnAtLocationFeature::PrimaryExecute(FSkillContext& InSkillContext)
 {
-	Super::Execute(InSkillContext);
+	Super::PrimaryExecute(InSkillContext);
+}
+
+void UExecutionUniqueSpawnAtLocationFeature::FinallyExecute(FSkillContext& InSkillContext)
+{
+	Super::FinallyExecute(InSkillContext);
 	
 	InSkillContext.SkillStage = ESkillStage::InExecution;
 	
@@ -41,9 +46,12 @@ void UExecutionUniqueSpawnAtLocationFeature::Execute(FSkillContext& InSkillConte
 		return;
 	}
 	
-	
 	this->SpawnAtLocation(InSkillContext);
-	
+}
+
+void UExecutionUniqueSpawnAtLocationFeature::OnPlayMontageNotifyBegin(FName NotifyName)
+{
+	Super::OnPlayMontageNotifyBegin(NotifyName);
 }
 
 void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSkillContext)
@@ -112,6 +120,6 @@ void UExecutionUniqueSpawnAtLocationFeature::SpawnAtLocation(FSkillContext& InSk
 }
 
 
-void UExecutionUniqueSpawnAtLocationFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext)
+void UExecutionUniqueSpawnAtLocationFeature::ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& InSkillContext)
 {
 }

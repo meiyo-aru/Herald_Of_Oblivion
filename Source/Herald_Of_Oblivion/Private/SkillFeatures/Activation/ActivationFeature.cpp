@@ -13,28 +13,21 @@
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequenceBase.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Core/EntityAnimInstance.h"
 #include "Core/EquipmentActor.h"
 #include "Core/EquipmentInstance.h"
 #include "Engine/Engine.h"
 
 void UActivationFeature::LoadFXSync()
 {
-	UNiagaraSystem* CachedEffect = ActivationEffect.LoadSynchronous();
-	CachedEffects.Add(FName("ActivationEffect"), CachedEffect);
-	WarmupNiagara(CachedEffect);
-	
-	USoundCue* CachedSound = ActivationSound.LoadSynchronous();
-	CachedSounds.Add(FName("ActivationSound"), CachedSound);
-	
-	CachedEffect = CastEffect.LoadSynchronous();
+	UNiagaraSystem* CachedEffect = CastEffect.LoadSynchronous();
 	CachedEffects.Add(FName("CastEffect"), CachedEffect);
 	WarmupNiagara(CachedEffect);
 	
-	CachedSound = CastSound.LoadSynchronous();
+	USoundCue* CachedSound = CastSound.LoadSynchronous();
 	CachedSounds.Add(FName("CastSound"), CachedSound);
 	
-	UAnimSequenceBase* CachedAnimation = CastAnimation.LoadSynchronous();
-	CachedAnimations.Add(FName("CastAnimation"), CachedAnimation);
+	CachedAnimations.Add(FName("CastAnimation"), CastAnimation.LoadSynchronous());
 }
 
 void UActivationFeature::Initialize(USkillInstance* Owner)
@@ -61,14 +54,14 @@ void UActivationFeature::CastOnHands(FSkillContext& InSkillContext, USkillInstan
 				if (SkillInstance->DataAsset->WeaponType == EquipmentInstance->GetEquipmentDataAsset()->WeaponType)
 				{
 					UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EquipmentActorPtr->GetMesh()->GetSocketRotation("Cast"),  EquipmentActorPtr->GetMesh()->GetSocketLocation("Cast"), InSkillContext);
-					if (bCastOnHandsFollowOwner)
+					if (bCastOnHandsFollowOwner && NC)
 						NC->AttachToComponent(EquipmentActorPtr->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Cast"));
 					InSkillContext.SpawnedNiagaraComponents.Add(NC);
 				}
 			} else
 			{
 				UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EquipmentActorPtr->GetMesh()->GetSocketRotation("Cast"),  EquipmentActorPtr->GetMesh()->GetSocketLocation("Cast"), InSkillContext);
-				if (bCastOnHandsFollowOwner)
+				if (bCastOnHandsFollowOwner && NC)
 					NC->AttachToComponent(EquipmentActorPtr->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Cast"));
 				InSkillContext.SpawnedNiagaraComponents.Add(NC);
 			}
@@ -82,7 +75,7 @@ void UActivationFeature::CastOnHands(FSkillContext& InSkillContext, USkillInstan
 				case EEquipmentSlot::RightWeapon:
 					{
 						UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EntityOwner->GetMesh()->GetSocketRotation("RightHand"), EntityOwner->GetMesh()->GetSocketLocation("RightHand"), InSkillContext);
-						if (bCastOnHandsFollowOwner)
+						if (bCastOnHandsFollowOwner && NC)
 							NC->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHand"));
 						InSkillContext.SpawnedNiagaraComponents.Add(NC);
 						break;
@@ -90,7 +83,7 @@ void UActivationFeature::CastOnHands(FSkillContext& InSkillContext, USkillInstan
 				case EEquipmentSlot::LeftWeapon:
 					{
 						UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EntityOwner->GetMesh()->GetSocketRotation("LeftHand"), EntityOwner->GetMesh()->GetSocketLocation("LeftHand"), InSkillContext);
-						if (bCastOnHandsFollowOwner)
+						if (bCastOnHandsFollowOwner && NC)
 							NC->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("LeftHand"));
 						InSkillContext.SpawnedNiagaraComponents.Add(NC);
 						break;
@@ -126,11 +119,16 @@ void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 					
 					if (EntityOwner)
 					{
-						if (UAnimInstance* AnimInstance = EntityOwner->GetMesh()->GetAnimInstance())
+						if (UEntityAnimInstance* AnimInstance = Cast<UEntityAnimInstance>(EntityOwner->GetMesh()->GetAnimInstance()))
 						{
 							if (TObjectPtr<UAnimSequenceBase>* Anim = CachedAnimations.Find(FName("CastAnimation")))
 							{
-								AnimInstance->PlaySlotAnimationAsDynamicMontage(*Anim, FName("UpperBody"), 0.5, 0.5, 1, 10);
+								if (CastAnimSlotName == FName("FullBodySlot"))
+									AnimInstance->AnimationMontageBlendWeight = 0.0f;	
+								else if (CastAnimSlotName == FName("UpperBodySlot"))
+									AnimInstance->AnimationMontageBlendWeight = 1.0f;	
+								
+								AnimInstance->PlaySlotAnimationAsDynamicMontage(*Anim, CastAnimSlotName, CastAnimBlendInTime, CastAnimBlendOutTime, 1, 100);
 								
 								if (FAttribute* Attribute = EntityOwner->GetSimbolicAttribute(SkillInstance->DataAsset->ReduceCastTimeAttribute))
 								{
@@ -143,7 +141,7 @@ void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 										if (bCastOnForward)
 										{
 											UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, FRotator::ZeroRotator, EntityOwner->GetMesh()->GetSocketLocation("Forward"), InSkillContext);
-											if (bCastOnForwardFollowOwner)
+											if (bCastOnForwardFollowOwner && NC)
 												NC->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Forward"));
 											InSkillContext.SpawnedNiagaraComponents.Add(NC);
 										} 
@@ -151,7 +149,6 @@ void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 											CastOnHands(InSkillContext, SkillInstance, EntityOwner, FX, EEquipmentSlot::RightWeapon);
 										if (bCastOnLeftHand)
 											CastOnHands(InSkillContext, SkillInstance, EntityOwner, FX, EEquipmentSlot::LeftWeapon);
-									
 									}
 									
 									TWeakObjectPtr WeakAnimInstance(AnimInstance);

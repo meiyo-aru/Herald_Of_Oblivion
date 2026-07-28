@@ -36,12 +36,17 @@ public:
 	virtual void Initialize(USkillInstance* Owner) override;
 	
 	// Executa a lógica principal da Feature
-	virtual void Execute(FSkillContext& InSkillContext) override;
-	
+	virtual void PrimaryExecute(FSkillContext& InSkillContext) override;
+	// Execução final, geralmente ouve uma notificacao da animação
+	virtual void FinallyExecute(FSkillContext& InSkillContext) override;
+
 	// Spawna o projetil
 	void SpawnProjectile(FSkillContext& InSkillContext, FName ShootingSocketName);
+	
+	virtual void OnPlayMontageNotifyBegin(FName NotifyName) override;
+	
 	// Executa alguma lógica nas particulas do niagara
-	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& SkillContext) override;
+	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& InSkillContext) override;
 
 	// Define se o projétil sai pelas mãos, caso False ele sai pelo SkillContext.StartLocation
 	UPROPERTY(EditAnywhere, Category="Projectile")

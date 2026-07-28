@@ -30,9 +30,14 @@ void UExecutionSpawnProjectileFeature::Initialize(USkillInstance* Owner)
 	Super::Initialize(Owner);
 }
 
-void UExecutionSpawnProjectileFeature::Execute(FSkillContext& InSkillContext)
+void UExecutionSpawnProjectileFeature::PrimaryExecute(FSkillContext& InSkillContext)
 {
-	Super::Execute(InSkillContext);
+	Super::PrimaryExecute(InSkillContext);
+}
+
+void UExecutionSpawnProjectileFeature::FinallyExecute(FSkillContext& InSkillContext)
+{
+	Super::FinallyExecute(InSkillContext);
 	
 	USkillInstance* SkillInstance = InSkillContext.SkillInstance.Get();
 	if (!SkillInstance)
@@ -200,20 +205,25 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	}
 }
 
-void UExecutionSpawnProjectileFeature::ProccessParticles(const TArray<FBasicParticleData>& Data, FSkillContext& SkillContext)
+void UExecutionSpawnProjectileFeature::OnPlayMontageNotifyBegin(FName NotifyName)
 {
-	if (Data.Num() == 0 || !SkillContext.SkillInstance.IsValid())
+	Super::OnPlayMontageNotifyBegin(NotifyName);
+}
+
+void UExecutionSpawnProjectileFeature::ProccessParticles(const TArray<FBasicParticleData>& Data, FSkillContext& InSkillContext)
+{
+	if (Data.Num() == 0 || !InSkillContext.SkillInstance.IsValid())
 	{
 		return;
 	}
 
-	ASkillActor* SkillActor = SkillContext.SkillActor.Get();
-	AEntityClass* EntityOwner = Cast<AEntityClass>(SkillContext.EntityOwner.Get());
+	ASkillActor* SkillActor = InSkillContext.SkillActor.Get();
+	AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get());
 	
 	if (!IsValid(SkillActor) || !IsValid(EntityOwner)) return;
 		
 	UE_LOG(LogTemp, Warning, TEXT("UExecutionSpawnProjectileFeature::ProccessParticles     ssssssssssss"));
-	TArray<FOverlapResult> OutOverlaps = MakeOverlapSphere(this->RadiusCollision, SkillContext, Data[0].Position);
+	TArray<FOverlapResult> OutOverlaps = MakeOverlapSphere(this->RadiusCollision, InSkillContext, Data[0].Position);
 
 	if (OutOverlaps.Num() == 0) return;
 	for (FOverlapResult OutOverlap : OutOverlaps)

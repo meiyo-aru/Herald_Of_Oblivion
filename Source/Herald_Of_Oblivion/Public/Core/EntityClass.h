@@ -29,6 +29,9 @@ class UAnimInstance;
 // Delegate para notificar mudanças de vida
 DECLARE_DELEGATE_OneParam(FOnHealthChangedSignature, float);
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnAnimationNotify, FName);
+
+
 UCLASS(Blueprintable, BlueprintType)
 class HERALD_OF_OBLIVION_API AEntityClass : public ACharacter
 {
@@ -38,8 +41,10 @@ public:
 	// Sets default values for this actor's properties
 	AEntityClass();
 	
+	// Delegates
 	FOnHealthChangedSignature OnHealthChanged;
-
+	FOnAnimationNotify OnAnimationNotify;
+	
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 	// Called every frame
