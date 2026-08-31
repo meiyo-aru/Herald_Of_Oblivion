@@ -103,11 +103,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="Properties")
 	EEntitySimbolicAttributeEnum ReduceCastTimeAttribute = EEntitySimbolicAttributeEnum::None;
 	
-	// Define se a skill precisa de uma arma equipada e seu tipo
-	UPROPERTY(EditDefaultsOnly, Category="Properties")
-	bool bWeaponIsNecessary = false;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Properties", AssetRegistrySearchable, meta=(EditCondition="bWeaponIsNecessary", EditConditionHides))
+	UPROPERTY(EditDefaultsOnly, Category="Properties", AssetRegistrySearchable)
 	EWeaponType WeaponType = EWeaponType::None;
 	
 	// O icone da habilidade

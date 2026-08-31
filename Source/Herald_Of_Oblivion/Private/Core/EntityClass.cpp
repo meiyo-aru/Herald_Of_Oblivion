@@ -241,6 +241,20 @@ AEquipmentActor* AEntityClass::GetEquipmentActor(EEquipmentSlot Slot)
 	return nullptr;
 }
 
+UEquipmentInstance* AEntityClass::GetEquipmentInstance(EEquipmentSlot Slot)
+{
+	TWeakObjectPtr<UEquipmentInstance> WeakInstance;
+	if (TWeakObjectPtr<UEquipmentInstance>* FoundPtr = EquippedEquipments.Find(Slot))
+	{
+		WeakInstance = *FoundPtr;
+		if (UEquipmentInstance* StrongInstance = WeakInstance.Get())
+		{
+			return StrongInstance;
+		}
+	}
+	return nullptr;
+}
+
 float AEntityClass::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (DamageEvent.GetTypeID() == FDamageStruct::ClassID)

@@ -72,7 +72,7 @@ public:
 	
 	// Define se os efeitos de Cast sao anexados a entidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
-	bool bCastOnForwardFollowOwner = false;
+	bool bCastOnForwardAttached = false;
 	// Define se o cast vai ser feito no socket forward da entidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
 	bool bCastOnForward = false;
@@ -80,7 +80,7 @@ public:
 	
 	// Define se os efeitos de Cast sao anexados a entidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
-	bool bCastOnHandsFollowOwner = false;
+	bool bCastOnHandsAttached = false;
 	// Define que o cast vai ser feito na mao direita
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cast")
 	bool bCastOnRightHand = false;

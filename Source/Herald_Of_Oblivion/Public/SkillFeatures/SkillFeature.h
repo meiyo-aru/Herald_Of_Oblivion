@@ -75,7 +75,8 @@ public:
 	TArray<FOverlapResult> MakeOverlapBox(FVector Size, FQuat Rotation, FSkillContext& InSkillContext, FVector Center);
 	// Cria uma esfera de overlap
 	virtual TArray<FOverlapResult> MakeOverlapSphere(float Radius, FSkillContext& InSkillContext, FVector Center);
-	
+	bool CanUseThisSkill(AEntityClass* EntityOwner);
+
 	FTimerHandle CleanNiagaraTimerHandle;
 	
 	UPROPERTY(EditAnywhere, Category = "Properties")

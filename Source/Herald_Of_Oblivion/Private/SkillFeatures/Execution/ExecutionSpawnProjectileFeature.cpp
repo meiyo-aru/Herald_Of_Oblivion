@@ -12,6 +12,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Core/EquipmentActor.h"
+#include "Core/EquipmentInstance.h"
 #include "Core/SkillInstance.h"
 #include "Engine/AssetManager.h"
 #include "Engine/Engine.h"
@@ -89,7 +90,28 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 	}
 	else 
 	{
-		if (bThrowByTheRightHand)
+		if (UEquipmentInstance* RightWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::RightWeapon))
+		{
+			if (RightWeapon->GetEquipmentDataAsset()->WeaponType == SkillInstance->DataAsset->WeaponType || SkillInstance->DataAsset->WeaponType == EWeaponType::None)
+			{
+				if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+					StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
+			}
+		} else
+		{
+			if (SkillInstance->DataAsset->WeaponType == EWeaponType::None)
+			{
+				StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));						
+			} else if (UEquipmentInstance* LeftWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::LeftWeapon))
+			{
+				if (LeftWeapon->GetEquipmentDataAsset()->WeaponType == SkillInstance->DataAsset->WeaponType)
+				{
+					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
+				}
+			} 
+		} 
+		/*if (bThrowByTheRightHand)
 		{
 			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
 				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Charge");
@@ -100,7 +122,7 @@ void UExecutionSpawnProjectileFeature::SpawnProjectile(FSkillContext& InSkillCon
 			if (AEquipmentActor* EquipmentActor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
 				StartLocation = EquipmentActor->GetMesh()->GetSocketLocation("Charge");
 			else StartLocation = EntityOwner->GetMesh()->GetSocketLocation("LeftHand");
-		}
+		}*/
 	}
 	
 	/*

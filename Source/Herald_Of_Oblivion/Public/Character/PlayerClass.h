@@ -42,6 +42,9 @@ public:
 
 	// Carrega os Assets de ativação necessários da skill
 	virtual void LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync) override;
+	void VerifyIsTurningInPlace();
+	void VerifyIsMovingOnGround();
+	void ManuallyRotateActor(float DeltaTime);
 
 	// TArray<USkillInstance*> GetEquippedSkillsInstances() const {return this->EquippedSkillsInstances;};
 	// TArray<FPrimaryAssetId> GetUISkills() const {return this->UISkills;};
@@ -55,6 +58,12 @@ public:
 	
 	UPROPERTY(Transient, BlueprintReadOnly, VisibleAnywhere, Category="Camera")
 	float YawOffset;
+
+	UPROPERTY(Transient)
+	bool bIsManuallyRotating = false;
+	
+	UPROPERTY(Transient)
+	FRotator TargetRotatorToManuallyRotating;
 	
 	// A especialização (classe) da entidade 
 	UPROPERTY(EditDefaultsOnly, Category="Properties")

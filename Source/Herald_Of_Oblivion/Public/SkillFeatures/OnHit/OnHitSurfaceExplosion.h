@@ -26,18 +26,18 @@ public:
 	// Realiza operações essenciais e comuns às classes filhas
 	virtual void Execute(FSkillContext& InSkillContext) override;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "FX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Niagara System", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> OnHitEffect;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "OnHit FX", meta = (AssetBundles = "FX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sound", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<USoundCue> OnHitSound;
 	
-	UPROPERTY(EditAnywhere, Category = "Explosion")
+	UPROPERTY(EditAnywhere, Category = "Niagara System")
 	float ExplosionRadius = 30.0f;
 	
-	UPROPERTY(EditAnywhere, Category = "Explosion")
+	UPROPERTY(EditAnywhere, Category = "Niagara System")
 	FVector ExplosionIntensityScale = FVector(1.0f,1.0f,1.0f);
 	
-	UPROPERTY(EditAnywhere, Category = "Explosion")
+	UPROPERTY(EditAnywhere, Category = "Niagara System")
 	float ExplosionTemperature = 1.0f;
 };

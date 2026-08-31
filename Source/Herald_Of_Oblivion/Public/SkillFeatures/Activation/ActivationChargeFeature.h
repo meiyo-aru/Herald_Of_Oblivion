@@ -20,7 +20,14 @@ class HERALD_OF_OBLIVION_API UActivationChargeFeature : public UActivationFeatur
 public:
 	// Inicializa a Feature, registrando-a nos delegates necessários
 	virtual void Initialize(USkillInstance* Owner) override;
-	
+	void SpawnWeaponAura(FSkillContext& InSkillContext, USkillInstance* SkillInstance, AEntityClass* EntityOwner,
+	                     UNiagaraSystem* AuraEffect, EEquipmentSlot WeaponSlot);
+	void SpawnChargeEffectFollowingAim(FSkillContext& InSkillContext, FRotator SpawnRotation,
+	                             UNiagaraSystem* ActivationFollowingAimVFX);
+	void SpawnEffectInWeapon(FSkillContext& InSkillContext, USkillInstance* SkillInstance, AEntityClass* EntityOwner,
+	                         UNiagaraSystem* ChargeFX, EEquipmentSlot WeaponSlot);
+	void SpawnChargeEffects(FSkillContext& InSkillContext, USkillInstance* SkillInstance, AEntityClass* EntityOwner, UNiagaraSystem* ChargeFX);
+
 	// Lógica de ativação inicial e final
 	virtual void StartActivation(FSkillContext& InSkillContext) override;
 	virtual void BeginDestroy() override;
@@ -41,7 +48,7 @@ public:
 	// Skill carregada bem na frente do personagem, no Socket de PrimaryChargeSocket
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge",  meta=(EditCondition="!bChargeOnLeftHand && !bChargeOnRightHand", EditConditionHides))
 	bool bChargeOnForward = false;
-
+	
 	// Tempo de carga máximo da habilidade
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge")
 	float MaxChargeTime = 0.0f;
@@ -80,9 +87,10 @@ public:
 	
 	// Se o efeito de carga deve seguir a mira
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta=(EditCondition="bChargeOnTarget", EditConditionHides))
-	bool bChargeFollowAim = false;
+	bool bChargeIsStatic = false;
+	
 	// Frequencia de atualizacao do efeito seguindo a mira
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta=(EditCondition="bChargeFollowAim && bChargeOnTarget", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Charge", meta=(EditCondition="bChargeIsStatic && bChargeOnTarget", EditConditionHides))
 	float RateToFollow = 0.5f;
 	UPROPERTY(Transient)
 	FTimerHandle TimerHandleChargeFollowAim;

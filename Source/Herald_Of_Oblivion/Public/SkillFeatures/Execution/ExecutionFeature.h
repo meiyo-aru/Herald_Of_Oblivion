@@ -24,24 +24,31 @@ class HERALD_OF_OBLIVION_API UExecutionFeature : public USkillFeature
 	GENERATED_BODY()
 	
 public:
+	FTimerHandle RotateManuallyTimerHandle;
+	
 	// Animação de execucao
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution", meta = (AssetBundles = "FX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UAnimSequenceBase> ExecutionAnimation;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	float PrimaryExecutionAnimBlendInTime = 0.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	float PrimaryExecutionAnimBlendOutTime = 0.0f;
 	// O Slot usado pela animação no AnimGraph
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
 	FName PrimaryExecutionAnimSlotName = FName("FullBodySlot");
 
 	FSkillContext* SkillContext;
 	
+	// Define se o personagem vai rotacionar para a direção da visão (Geralmente utilizado quando o personagem 
+	// precisa estar virado para uma direcao e a própria animação não consegue fazer isso)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	bool bRotateManually;
+	
 	// Efeito de execução da skill, deve ser compatível com a ExecutionFeature
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution", meta = (AssetBundles = "FX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Niagara System", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<UNiagaraSystem> ExecutionEffect;
 	// Efeito de som
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution", meta = (AssetBundles = "FX"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sound", meta = (AssetBundles = "FX"))
 	TSoftObjectPtr<USoundCue> ExecutionSound;
 
 	// Carrega os FX de forma síncrona

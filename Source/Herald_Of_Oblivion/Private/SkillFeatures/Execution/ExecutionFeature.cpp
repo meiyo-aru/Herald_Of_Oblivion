@@ -3,12 +3,16 @@
 
 #include "SkillFeatures/Execution/ExecutionFeature.h"
 #include "NiagaraSystem.h"
+#include "TimerManager.h"
 #include "Animation/AnimInstance.h"
+#include "Character/PlayerClass.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Core/EntityAnimInstance.h"
 #include "Sound/SoundCue.h"
 
 #include "Core/SkillInstance.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 void UExecutionFeature::LoadFXSync()
 {
@@ -33,8 +37,24 @@ void UExecutionFeature::PrimaryExecute(FSkillContext& InSkillContext)
 {
 	InSkillContext.SkillStage = ESkillStage::InExecution;
 	
+
+	
 	if (AEntityClass* EntityOwner = Cast<AEntityClass>(InSkillContext.EntityOwner.Get()))
 	{
+		if (bRotateManually)
+		{
+			if (APlayerClass* Player = Cast<APlayerClass>(EntityOwner))
+			{
+				Player->bIsManuallyRotating = true;
+				
+				FVector Direction = InSkillContext.EndLocation - EntityOwner->GetActorLocation();
+				Direction.Z = 0.f;
+				Direction.Normalize();
+			
+				Player->TargetRotatorToManuallyRotating = Direction.Rotation();
+			}
+		}
+		
 		if (UEntityAnimInstance* AnimInstance = Cast<UEntityAnimInstance>(EntityOwner->GetMesh()->GetAnimInstance()))
 		{
 			if (TObjectPtr<UAnimSequenceBase>* Anim = CachedAnimations.Find(FName("ExecutionAnimation")))

@@ -6,7 +6,10 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Core/EntityClass.h"
+#include "Core/EquipmentActor.h"
+#include "Core/EquipmentInstance.h"
 #include "Core/SkillActor.h"
+#include "Core/SkillInstance.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/StaticMesh.h"
@@ -234,4 +237,26 @@ TArray<FOverlapResult> USkillFeature::MakeOverlapSphere(float Radius, FSkillCont
 		
 	}
 	return OutOverlaps;
+}
+
+/*
+FVector USkillFeature::GetValidHandLocationByWeaponType()
+{
+	
+}
+*/
+
+bool USkillFeature::CanUseThisSkill(AEntityClass* EntityOwner)
+{
+	if (USkillInstance* Instance = Cast<USkillInstance>(GetOuter()))
+	{
+		UEquipmentInstance* RightWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::RightWeapon);
+		UEquipmentInstance* LeftWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::LeftWeapon);
+		
+		if (RightWeapon->GetEquipmentDataAsset()->WeaponType == Instance->DataAsset->WeaponType || LeftWeapon->GetEquipmentDataAsset()->WeaponType == Instance->DataAsset->WeaponType)
+		{
+			return true;
+		}	
+	}
+	return false;
 }

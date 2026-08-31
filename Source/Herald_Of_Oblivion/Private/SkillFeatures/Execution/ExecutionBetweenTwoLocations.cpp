@@ -9,6 +9,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Core/EntityClass.h"
 #include "Core/EquipmentActor.h"
+#include "Core/EquipmentInstance.h"
 #include "Core/SkillActor.h"
 #include "Core/SkillInstance.h"
 #include "Engine/Engine.h"
@@ -130,17 +131,27 @@ void UExecutionBetweenTwoLocations::FinallyExecute(FSkillContext& InSkillContext
 			} else if (!bUseStartLocation)
 			{
 				FVector StartLocation;
-				if (bUseRight)
+				if (UEquipmentInstance* RightWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::RightWeapon))
 				{
-					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
-					else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));
+					if (RightWeapon->GetEquipmentDataAsset()->WeaponType == SkillInstance->DataAsset->WeaponType || SkillInstance->DataAsset->WeaponType == EWeaponType::None)
+					{
+						if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+							StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
+					}
 				} else
 				{
-					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-						StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
-					else StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));
-				}
+					if (SkillInstance->DataAsset->WeaponType == EWeaponType::None)
+					{
+						StartLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));						
+					} else if (UEquipmentInstance* LeftWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::LeftWeapon))
+					{
+						if (LeftWeapon->GetEquipmentDataAsset()->WeaponType == SkillInstance->DataAsset->WeaponType)
+						{
+							if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+								StartLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
+						}
+					} 
+				} 
 				
 				FVector Direction = (InSkillContext.EndLocation - StartLocation).GetSafeNormal();
 					
@@ -159,17 +170,27 @@ void UExecutionBetweenTwoLocations::FinallyExecute(FSkillContext& InSkillContext
 			} else
 			{
 				FVector EndLocation;
-				if (bUseRight)
+				if (UEquipmentInstance* RightWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::RightWeapon))
 				{
-					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
-						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
-					else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));					
+					if (RightWeapon->GetEquipmentDataAsset()->WeaponType == SkillInstance->DataAsset->WeaponType || SkillInstance->DataAsset->WeaponType == EWeaponType::None)
+					{
+						if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::RightWeapon))
+							EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
+					}
 				} else
 				{
-					if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
-						EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
-					else EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("LeftHand"));					
-				}
+					if (SkillInstance->DataAsset->WeaponType == EWeaponType::None)
+					{
+						EndLocation = EntityOwner->GetMesh()->GetSocketLocation(FName("RightHand"));						
+					} else if (UEquipmentInstance* LeftWeapon = EntityOwner->GetEquipmentInstance(EEquipmentSlot::LeftWeapon))
+					{
+						if (LeftWeapon->GetEquipmentDataAsset()->WeaponType == SkillInstance->DataAsset->WeaponType)
+						{
+							if (AEquipmentActor* Actor = EntityOwner->GetEquipmentActor(EEquipmentSlot::LeftWeapon))
+								EndLocation = Actor->GetMesh()->GetSocketLocation(FName("Charge"));
+						}
+					} 
+				} 
 				
 				FVector Direction = (EndLocation - InSkillContext.StartLocation).GetSafeNormal();
 					

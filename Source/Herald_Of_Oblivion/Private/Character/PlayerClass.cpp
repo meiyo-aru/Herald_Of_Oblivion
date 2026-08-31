@@ -102,11 +102,8 @@ void APlayerClass::LoadSkillAssets(USkillInstance* SkillInstance, bool bAsync)
 	Super::LoadSkillAssets(SkillInstance, bAsync);
 }
 
-// Called every frame
-void APlayerClass::Tick(float DeltaTime)
+void APlayerClass::VerifyIsTurningInPlace()
 {
-	Super::Tick(DeltaTime);
-	
 	if (bIsTurningInPlace || bIsHardTurningInPlace)
 	{
 		FRotator CurrentRotation = GetActorRotation();
@@ -138,7 +135,10 @@ void APlayerClass::Tick(float DeltaTime)
 			}
 		}
 	}
-	
+}
+
+void APlayerClass::VerifyIsMovingOnGround()
+{
 	// Verifica se o Personagem está no chão e atualiza o SurfaceMaterial
 	if (this->GetCharacterMovement()->IsMovingOnGround())
 	{
@@ -183,6 +183,41 @@ void APlayerClass::Tick(float DeltaTime)
 			}
 		}
 	}
+}
+
+void APlayerClass::ManuallyRotateActor(float DeltaTime)
+{
+	if (bIsManuallyRotating)
+	{
+		if (!TargetRotatorToManuallyRotating.IsZero())
+		{
+			FRotator NewRotation = FMath::RInterpTo(
+				GetActorRotation(),
+				TargetRotatorToManuallyRotating,
+				DeltaTime,
+				5.f);
+			
+			SetActorRotation(NewRotation);
+			
+			if (GetActorRotation().Equals(TargetRotatorToManuallyRotating, 5.f))
+			{
+				bIsManuallyRotating = false;
+				TargetRotatorToManuallyRotating = FRotator::ZeroRotator;
+			}
+		}
+	}
+}
+
+// Called every frame
+void APlayerClass::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	ManuallyRotateActor(DeltaTime);
+	
+	VerifyIsTurningInPlace();
+	
+	VerifyIsMovingOnGround();
 }
 
 void APlayerClass::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

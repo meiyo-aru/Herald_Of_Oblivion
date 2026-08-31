@@ -46,36 +46,27 @@ void UActivationFeature::Initialize(USkillInstance* Owner)
 void UActivationFeature::CastOnHands(FSkillContext& InSkillContext, USkillInstance* SkillInstance, AEntityClass* EntityOwner, TObjectPtr<UNiagaraSystem>* FX, EEquipmentSlot Hand)
 {
 	if (AEquipmentActor* EquipmentActorPtr = EntityOwner->GetEquipmentActor(Hand))
-	{
+	{   
 		if (UEquipmentInstance* EquipmentInstance = EquipmentActorPtr->GetEquipmentInstanceOwner().Get())
 		{
-			if (SkillInstance->DataAsset->bWeaponIsNecessary)
-			{
-				if (SkillInstance->DataAsset->WeaponType == EquipmentInstance->GetEquipmentDataAsset()->WeaponType)
-				{
-					UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EquipmentActorPtr->GetMesh()->GetSocketRotation("Cast"),  EquipmentActorPtr->GetMesh()->GetSocketLocation("Cast"), InSkillContext);
-					if (bCastOnHandsFollowOwner && NC)
-						NC->AttachToComponent(EquipmentActorPtr->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Cast"));
-					InSkillContext.SpawnedNiagaraComponents.Add(NC);
-				}
-			} else
+			if (SkillInstance->DataAsset->WeaponType == EquipmentInstance->GetEquipmentDataAsset()->WeaponType)
 			{
 				UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EquipmentActorPtr->GetMesh()->GetSocketRotation("Cast"),  EquipmentActorPtr->GetMesh()->GetSocketLocation("Cast"), InSkillContext);
-				if (bCastOnHandsFollowOwner && NC)
+				if (bCastOnHandsAttached && NC)
 					NC->AttachToComponent(EquipmentActorPtr->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Cast"));
 				InSkillContext.SpawnedNiagaraComponents.Add(NC);
 			}
 		}
 	} else
 	{
-		if (!SkillInstance->DataAsset->bWeaponIsNecessary)
+		if (SkillInstance->DataAsset->WeaponType == EWeaponType::None)
 		{
 			switch (Hand)
 			{
 				case EEquipmentSlot::RightWeapon:
 					{
 						UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EntityOwner->GetMesh()->GetSocketRotation("RightHand"), EntityOwner->GetMesh()->GetSocketLocation("RightHand"), InSkillContext);
-						if (bCastOnHandsFollowOwner && NC)
+						if (bCastOnHandsAttached && NC)
 							NC->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHand"));
 						InSkillContext.SpawnedNiagaraComponents.Add(NC);
 						break;
@@ -83,7 +74,7 @@ void UActivationFeature::CastOnHands(FSkillContext& InSkillContext, USkillInstan
 				case EEquipmentSlot::LeftWeapon:
 					{
 						UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, EntityOwner->GetMesh()->GetSocketRotation("LeftHand"), EntityOwner->GetMesh()->GetSocketLocation("LeftHand"), InSkillContext);
-						if (bCastOnHandsFollowOwner && NC)
+						if (bCastOnHandsAttached && NC)
 							NC->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("LeftHand"));
 						InSkillContext.SpawnedNiagaraComponents.Add(NC);
 						break;
@@ -141,7 +132,7 @@ void UActivationFeature::StartActivation(FSkillContext& InSkillContext)
 										if (bCastOnForward)
 										{
 											UNiagaraComponent* NC = SpawnVFXAtLocation(*FX, FRotator::ZeroRotator, EntityOwner->GetMesh()->GetSocketLocation("Forward"), InSkillContext);
-											if (bCastOnForwardFollowOwner && NC)
+											if (bCastOnForwardAttached && NC)
 												NC->AttachToComponent(EntityOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("Forward"));
 											InSkillContext.SpawnedNiagaraComponents.Add(NC);
 										} 

@@ -79,6 +79,8 @@ public:
 	// Busca o actor fisico de um equipamento equipado em um slot.
 	AEquipmentActor* GetEquipmentActor(EEquipmentSlot Slot);
 
+	UEquipmentInstance* GetEquipmentInstance(EEquipmentSlot Slot);
+	
 	/*
 	#if WITH_EDITOR // Compila este código apenas no editor
 		// Chamado quando uma propriedade é alterada no editor

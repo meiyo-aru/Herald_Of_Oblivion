@@ -17,21 +17,21 @@ class HERALD_OF_OBLIVION_API UExecutionUniqueSpawnAtLocationFeature : public UEx
 	
 public:
 	// Mínimo de tempo de vida do niagara
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	float MinLifeSpan = 0.0f;
 	// Máximo de tempo de vida do niagara
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	float MaxLifeSpan = 1.0f;
 	
 	// Intensidade do efeito
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	float Intensity = 0.0f;
 	// Raio de colisão do efeito
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	float CollisionRadius = 0.0f;
 	
 	// Define se spawna ao castar a skill ou ao soltar
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	bool bSpawnOnEndLocation = true;
 
 	// Carrega os FX de forma assincrona ou não

@@ -35,39 +35,41 @@ public:
 	virtual void ProccessParticles(const TArray<struct FBasicParticleData>& Data, FSkillContext& InSkillContext) override;
 	
 	// Caso True, o efeito usara o StartLocation do contexto da skill como início do efeito
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	bool bUseStartLocation = true;
 	
 	// Define se usará o socket Forward da entidade.
 	// É ignorado caso bUseStartLocation == true ou !bUseStartLocation && !bUseStartLocation
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="!bUseStartLocation || (!bUseStartLocation && !bUseEndLocation)", EditConditionHides))
+	UPROPERTY(EditAnywhere, Category="Niagara System", meta=(EditCondition="!bUseStartLocation || (!bUseStartLocation && !bUseEndLocation)", EditConditionHides))
 	bool bUseForward = false;
 	
+	/*
 	// Define se usará a arma ou mão direita como início do efeito, caso false usará a mão esquerda. É
 	// ignorado caso bUseStartLocation == true ou !bUseStartLocation && !bUseStartLocation
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="!bUseStartLocation || (!bUseStartLocation && !bUseEndLocation)", EditConditionHides))
+	UPROPERTY(EditAnywhere, Category="Niagara System", meta=(EditCondition="!bUseStartLocation || (!bUseStartLocation && !bUseEndLocation)", EditConditionHides))
 	bool bUseRight = true;
+	*/
 
 	// Define se usará o EndLocation do contexto da skill como fim do efeito
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	bool bUseEndLocation = true;
 	
 	// Define se o spawn será no Start ou End location
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Niagara System")
 	bool bSpawnOnEndLocation = false;
 	
 	// Define o comprimento máximo do efeito, caso não use start e endlocation
-	UPROPERTY(EditAnywhere, Category="Properties", meta=(EditCondition="!bUseStartLocation && !bUseEndLocation", EditConditionHides))
+	UPROPERTY(EditAnywhere, Category="Niagara System", meta=(EditCondition="!bUseStartLocation && !bUseEndLocation", EditConditionHides))
 	float MaxLenght;	
 	
 	// Altura da CollisionBox
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Collision")
 	float CollisionHeight = 20.0f;
 	// Profundidade da CollisionBox, eixo Y
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Collision")
 	float CollisionDepth = 20.0f;
 	
 	// Se True, a colisão é feita em cada partícula
-	UPROPERTY(EditAnywhere, Category="Properties")
+	UPROPERTY(EditAnywhere, Category="Collision")
 	bool bCollisionPerParticle = false;
 };
